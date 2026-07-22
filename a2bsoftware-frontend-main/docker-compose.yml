@@ -1,0 +1,37 @@
+# Runs just the frontend:
+#
+#   docker compose up --build
+#
+# The database, Keycloak, and the backend API all live in the sibling
+# ../a2bsoftware-backend repo's own docker-compose.yml - start that stack
+# first (it publishes MySQL on host port 3307 and the API on 8081), then
+# start this one.
+#
+# Service:
+#   frontend - Next.js app on http://localhost:3000
+#
+# Overridable via a .env file next to this compose file or shell env:
+#   NEXT_PUBLIC_API_BASE_URL, DB_PASSWORD, DB_NAME
+
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        # Baked into the client bundle at build time - the browser calls the
+        # backend directly, so this must be an address reachable from the
+        # user's browser, not just from inside the Docker network.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8081}
+    env_file:
+      - ./.env
+    environment:
+      # host.docker.internal reaches the MySQL container published by the
+      # backend stack on the host machine's port 3307 (127.0.0.1 from inside
+      # this container would refer to this container itself, not the host).
+      DATABASE_URL: mysql://root:${DB_PASSWORD:-dockerpass}@host.docker.internal:3307/${DB_NAME:-a2b_dashboard}
+    extra_hosts:
+      # host.docker.internal is automatic on Docker Desktop (Mac/Windows);
+      # this makes it resolve on Linux too.
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"

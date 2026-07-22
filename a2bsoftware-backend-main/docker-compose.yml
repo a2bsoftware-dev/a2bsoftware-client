@@ -1,0 +1,37 @@
+services:
+  backend:
+    build: ./dashboard-backend
+    environment:
+      SERVER_PORT: 8081
+      # host.docker.internal reaches the native MySQL running on the host machine
+      # (127.0.0.1 from inside this container would refer to the container itself).
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-a2b_dashboard}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      # Client ID is public/non-secret and stable, so it's defaulted here. The
+      # secret is not - every developer supplies their own via a local .env
+      # (see .env.example), never hardcoded or defaulted in a committed file.
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-dashboard-tool}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Hosted Keycloak (retired the local quay.io/keycloak container - this is
+      # a single public HTTPS address reachable the same way from the browser
+      # and from inside this container, so public/internal are identical now.
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-https://a2b-keycloak.onrender.com}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-https://a2b-keycloak.onrender.com}
+    ports:
+      - "8081:8081"
+
+  frontend:
+    build:
+      context: ../a2bsoftware-frontend
+      args:
+        # Baked into the browser bundle at build time - must be reachable from
+        # the user's browser, not just from inside the Docker network.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8081}
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"

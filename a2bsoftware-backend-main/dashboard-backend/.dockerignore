@@ -1,0 +1,12 @@
+target
+.idea
+.mvn/wrapper/maven-wrapper.jar
+*.iml
+.classpath
+.factorypath
+.project
+.settings
+.vscode
+src/main/resources/application-local.yaml
+Dockerfile
+.dockerignore

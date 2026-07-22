@@ -1,0 +1,236 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground overflow-x-hidden;
+  }
+  html {
+    @apply font-sans overflow-x-hidden;
+  }
+}
+
+/* Multi-color gradients for buttons and menus */
+.gradient-primary {
+  background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 45%, #ec4899 100%);
+}
+.gradient-primary:hover {
+  background-image: linear-gradient(135deg, #4338ca 0%, #6d28d9 45%, #db2777 100%);
+}
+.dark .gradient-primary {
+  background-image: linear-gradient(135deg, #818cf8 0%, #a78bfa 45%, #f472b6 100%);
+}
+.dark .gradient-primary:hover {
+  background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 45%, #ec4899 100%);
+}
+
+.gradient-secondary {
+  background-image: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+}
+.gradient-secondary:hover {
+  background-image: linear-gradient(135deg, #0891b2 0%, #2563eb 100%);
+}
+.dark .gradient-secondary {
+  background-image: linear-gradient(135deg, #22d3ee 0%, #60a5fa 100%);
+}
+.dark .gradient-secondary:hover {
+  background-image: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+}
+
+.gradient-destructive {
+  background-image: linear-gradient(135deg, #f43f5e 0%, #f97316 100%);
+}
+.gradient-destructive:hover {
+  background-image: linear-gradient(135deg, #e11d48 0%, #ea580c 100%);
+}
+.dark .gradient-destructive {
+  background-image: linear-gradient(135deg, #fb7185 0%, #fb923c 100%);
+}
+.dark .gradient-destructive:hover {
+  background-image: linear-gradient(135deg, #f43f5e 0%, #f97316 100%);
+}
+
+.gradient-text-primary {
+  background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 45%, #ec4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.dark .gradient-text-primary {
+  background-image: linear-gradient(135deg, #818cf8 0%, #a78bfa 45%, #f472b6 100%);
+}
+
+.gradient-soft-hover:hover {
+  background-image: linear-gradient(135deg, color-mix(in oklch, #6366f1 16%, transparent) 0%, color-mix(in oklch, #ec4899 16%, transparent) 100%);
+}
+.dark .gradient-soft-hover:hover {
+  background-image: linear-gradient(135deg, color-mix(in oklch, #818cf8 22%, transparent) 0%, color-mix(in oklch, #f472b6 22%, transparent) 100%);
+}
+
+.gradient-menu-active {
+  background-image: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+}
+.dark .gradient-menu-active {
+  background-image: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
+}
+
+.gradient-menu-hover:hover {
+  background-image: linear-gradient(135deg, color-mix(in oklch, #6366f1 14%, transparent) 0%, color-mix(in oklch, #06b6d4 14%, transparent) 100%);
+}
+.dark .gradient-menu-hover:hover {
+  background-image: linear-gradient(135deg, color-mix(in oklch, #818cf8 20%, transparent) 0%, color-mix(in oklch, #22d3ee 20%, transparent) 100%);
+}
+
+/* State-based gradients: Tailwind can't generate variant prefixes (data-active:,
+   focus:, data-open:) for custom class names, only for real Tailwind utilities.
+   These use plain attribute/pseudo-class selectors instead.
+   Uses [data-sidebar="menu-button"] rather than [data-slot="sidebar-menu-button"]
+   because when SidebarMenuButton is used as a CollapsibleTrigger's render target
+   (collapsible parent nav items), CollapsibleTrigger's own data-slot="collapsible-trigger"
+   overrides SidebarMenuButton's data-slot in the merge — data-sidebar is untouched. */
+[data-sidebar="menu-button"][data-active],
+[data-slot="dropdown-menu-item"][data-active="true"] {
+  background-image: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+}
+.dark [data-sidebar="menu-button"][data-active],
+.dark [data-slot="dropdown-menu-item"][data-active="true"] {
+  background-image: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
+}
+
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):focus,
+[data-slot="dropdown-menu-checkbox-item"]:focus,
+[data-slot="dropdown-menu-radio-item"]:focus {
+  background-image: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+}
+.dark [data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):focus,
+.dark [data-slot="dropdown-menu-checkbox-item"]:focus,
+.dark [data-slot="dropdown-menu-radio-item"]:focus {
+  background-image: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
+}
+
+[data-slot="dropdown-menu-sub-trigger"][data-open],
+[data-slot="dropdown-menu-sub-trigger"][data-popup-open] {
+  background-image: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+}
+.dark [data-slot="dropdown-menu-sub-trigger"][data-open],
+.dark [data-slot="dropdown-menu-sub-trigger"][data-popup-open] {
+  background-image: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
+}
