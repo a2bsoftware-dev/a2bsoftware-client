@@ -45,9 +45,9 @@ WORKDIR /app
 ARG VERSION=0.0.0
 ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
-LABEL org.opencontainers.image.title="a2bsoftware-frontend" \
+LABEL org.opencontainers.image.title="a2bsoftware-client" \
       org.opencontainers.image.description="A2B Software survey/dashboard frontend (Next.js)" \
-      org.opencontainers.image.source="https://github.com/a2bsoftware-dev/a2bsoftware-frontend" \
+      org.opencontainers.image.source="https://github.com/a2bsoftware-dev/a2bsoftware-client" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
@@ -55,7 +55,7 @@ LABEL org.opencontainers.image.title="a2bsoftware-frontend" \
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+ENV PORT=5000
 ENV HOSTNAME=0.0.0.0
 
 # The official node:20-slim image ships a pre-created, unprivileged `node`
@@ -68,7 +68,7 @@ COPY --from=builder --chown=node:node /app/healthcheck.js ./healthcheck.js
 
 USER node
 
-EXPOSE 3000
+EXPOSE 5000
 
 # Shells out to Node instead of curl/wget - neither is installed in this
 # image, and adding one just for a healthcheck would widen the attack
