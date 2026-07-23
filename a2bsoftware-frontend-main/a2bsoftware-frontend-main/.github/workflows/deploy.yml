@@ -1,0 +1,133 @@
+name: Deploy
+
+# Single workflow: lint/typecheck/build -> docker build (local) -> compress ->
+# ship to the server -> load -> blue/green cutover. No registry involved -
+# the image never leaves this runner and the server except as a gzipped
+# tarball over the same SSH connection used for everything else. Mirrors the
+# sibling a2bsoftware-backend repo's pipeline shape.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.ts"
+      - "**.tsx"
+      - "package.json"
+      - "package-lock.json"
+      - "prisma/**"
+      - "Dockerfile"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  # Fixed key (NOT per-ref) - only one deploy may touch the server at a time.
+  # cancel-in-progress is deliberately false: a deploy already mid-flight has
+  # an open SSH session possibly between starting the new slot and reloading
+  # nginx - cancelling that connection could leave the box half-deployed.
+  group: frontend-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Fast fail-fast gate before the slower Docker build below.
+      - name: Build (fail fast on build errors)
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_BACKEND_URL: ${{ vars.NEXT_PUBLIC_BACKEND_URL }}
+        run: npm run build
+
+      - name: Derive image tag (short commit SHA)
+        id: vars
+        run: echo "tag=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Baked into the client bundle and the standalone server's routes
+      # manifest at build time (see Dockerfile comments) - must be the real
+      # production URLs.
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t "a2bsoftware-frontend:${{ steps.vars.outputs.tag }}" \
+            --build-arg NEXT_PUBLIC_API_BASE_URL="${{ vars.NEXT_PUBLIC_API_BASE_URL }}" \
+            --build-arg NEXT_PUBLIC_BACKEND_URL="${{ vars.NEXT_PUBLIC_BACKEND_URL }}" \
+            --build-arg VERSION="${{ steps.vars.outputs.tag }}" \
+            --build-arg VCS_REF="${{ github.sha }}" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            .
+
+      - name: Save and compress the image
+        run: docker save "a2bsoftware-frontend:${{ steps.vars.outputs.tag }}" | gzip > app.tar.gz
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # No SSH_KNOWN_HOSTS secret - accept-new trusts the host key on first
+      # connect and pins it for the rest of this job, same as every other
+      # step in this pipeline that talks to the server.
+      - name: Sync deploy/ assets and image to the server
+        env:
+          SSH_OPTS: -o StrictHostKeyChecking=accept-new -p ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          rsync -az --delete \
+            --exclude ".env" --exclude "state/" \
+            -e "ssh $SSH_OPTS" \
+            ./deploy/ app.tar.gz "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ vars.DEPLOY_PATH }}/"
+
+      # Secrets are piped over stdin, never as a CLI arg - see
+      # deploy/scripts/write-env.sh. GitHub already masks every secrets.*
+      # value in the raw log regardless, but this avoids it ever needing to.
+      - name: Write .env on the server
+        env:
+          SSH_OPTS: -o StrictHostKeyChecking=accept-new -p ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "bash '${{ vars.DEPLOY_PATH }}/scripts/write-env.sh'" <<EOF
+          ZAMP_KEY=${{ secrets.ZAMP_KEY }}
+          EXIT_HMAC_KEY=${{ secrets.EXIT_HMAC_KEY }}
+          NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_BACKEND_URL=${{ vars.NEXT_PUBLIC_BACKEND_URL }}
+          DOMAIN=${{ vars.DOMAIN }}
+          LOG_LEVEL=${{ vars.LOG_LEVEL || 'info' }}
+          EOF
+
+      - name: Run the remote deploy script
+        env:
+          SSH_OPTS: -o StrictHostKeyChecking=accept-new -p ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          echo "::notice::▶ Deployment started - image a2bsoftware-frontend:${{ steps.vars.outputs.tag }}"
+          ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd '${{ vars.DEPLOY_PATH }}' && bash scripts/deploy.sh"
+
+      - name: Report outcome
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "::notice::✔ Deployment Successful"
+          else
+            echo "::error::✖ Deployment failed. deploy.sh auto-rolls-back on a failed health check (the previously-active slot is never touched until the new one passes), so the server should still be serving its previous version - confirm with scripts/health-check.sh over SSH (see docs/DEPLOYMENT.md 'Troubleshooting')."
+          fi

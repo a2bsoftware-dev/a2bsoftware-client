@@ -1,0 +1,21 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+npm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
+lib/generated/prisma
+public/uploads/*
+!public/uploads/.gitkeep
+.vscode
+Dockerfile
+.dockerignore
+
+# CI/CD and docs - irrelevant to the runtime image, keeps the build context
+# (and therefore the image) free of deploy scripts/nginx config/docs.
+deploy/
+docs/
+.github/
+*.md

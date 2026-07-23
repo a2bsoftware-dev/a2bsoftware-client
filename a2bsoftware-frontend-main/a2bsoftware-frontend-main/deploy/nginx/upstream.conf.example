@@ -1,0 +1,9 @@
+# One-time seed for state/upstream.conf - deploy.sh copies this here ONLY
+# if state/upstream.conf doesn't exist yet (i.e. a brand-new server's very
+# first deploy). After that, deploy.sh rewrites state/upstream.conf
+# directly on every deploy to flip between blue (127.0.0.1:3000) and green
+# (127.0.0.1:3001) - this .example file itself never changes and is never
+# read again after the first deploy.
+upstream a2b_frontend {
+  server 127.0.0.1:3000;
+}

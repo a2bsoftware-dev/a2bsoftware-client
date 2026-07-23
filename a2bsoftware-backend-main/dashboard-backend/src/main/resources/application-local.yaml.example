@@ -1,6 +1,0 @@
-spring:
-  datasource:
-    password: your-local-mysql-password-here
-
-zamplia:
-  api-key: your-zamplia-api-key-here

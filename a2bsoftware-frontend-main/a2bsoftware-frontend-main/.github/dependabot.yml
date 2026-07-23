@@ -1,0 +1,25 @@
+# Automated dependency PRs across every ecosystem this pipeline touches
+# (npm packages, the Dockerfile's base images, and Actions versions) - opens
+# PRs only, doesn't run any extra CI workflow itself.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Batches routine minor/patch bumps into one PR instead of one per
+      # package - security-relevant major bumps still get their own PR.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
