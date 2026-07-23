@@ -38,6 +38,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import ProjectViewModal from "@/components/project-view-modal";
 import ProjectEditModal from "@/components/project-edit-modal";
+import { useModulePermission } from "@/hooks/use-module-permission";
+
+// Matches the "Projects" entry in ACCESS_RIGHTS_MODULES (access-rights page)
+// and MODULE_ID in the backend's ProjectController.
+const PROJECTS_MODULE_ID = 6;
 
 // Row shape returned by GET /api/projects (and reused for the selected-project
 // state used by the status-change modal).
@@ -105,6 +110,7 @@ interface FilterOptions {
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { permission } = useModulePermission(PROJECTS_MODULE_ID);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
@@ -353,14 +359,16 @@ export default function ProjectsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => window.location.href = "/projects/add"}
-            size="sm"
-            className="flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus size={15} />
-            <span>Add Project</span>
-          </Button>
+          {permission.create && (
+            <Button
+              onClick={() => window.location.href = "/projects/add"}
+              size="sm"
+              className="flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus size={15} />
+              <span>Add Project</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -667,6 +675,7 @@ export default function ProjectsPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            disabled={!permission.update}
                             onClick={() => openStatusModal(project)}
                             className={`h-7 px-2.5 rounded-full text-xs font-semibold border ${getStatusColor(project.statusId)}`}
                           >
@@ -697,31 +706,39 @@ export default function ProjectsPage() {
                               >
                                 <Eye size={14} /> View details
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setActiveProjectId(project.id);
-                                  setEditModalOpen(true);
-                                }}
-                              >
-                                <Edit2 size={14} /> Edit project
-                              </DropdownMenuItem>
+                              {permission.update && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setActiveProjectId(project.id);
+                                    setEditModalOpen(true);
+                                  }}
+                                >
+                                  <Edit2 size={14} /> Edit project
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => router.push(`/supliers/${project.id}`)}
                               >
                                 <Link2 size={14} /> Manage Suppliers
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleCopy(project.id)}
-                              >
-                                <Copy size={14} /> Duplicate project
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleDelete(project.id)}
-                              >
-                                <Trash2 size={14} /> Delete project
-                              </DropdownMenuItem>
+                              {permission.create && (
+                                <DropdownMenuItem
+                                  onClick={() => handleCopy(project.id)}
+                                >
+                                  <Copy size={14} /> Duplicate project
+                                </DropdownMenuItem>
+                              )}
+                              {permission.delete && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => handleDelete(project.id)}
+                                  >
+                                    <Trash2 size={14} /> Delete project
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

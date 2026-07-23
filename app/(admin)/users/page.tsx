@@ -28,6 +28,11 @@ import {
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { useModulePermission } from "@/hooks/use-module-permission";
+
+// Matches the "Users" entry in ACCESS_RIGHTS_MODULES (access-rights page)
+// and MODULE_ID in the backend's UserController.
+const USERS_MODULE_ID = 10;
 
 interface User {
   id: string;
@@ -45,6 +50,7 @@ interface Role {
 }
 
 export default function UsersPage() {
+  const { permission } = useModulePermission(USERS_MODULE_ID);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -233,14 +239,16 @@ export default function UsersPage() {
             Add internal staff, project managers, and sales managers, and assign their platform roles.
           </p>
         </div>
-        <Button
-          onClick={openAddModal}
-          size="sm"
-          className="flex items-center gap-1.5 shadow-sm"
-        >
-          <Plus size={15} />
-          <span>Add User</span>
-        </Button>
+        {permission.create && (
+          <Button
+            onClick={openAddModal}
+            size="sm"
+            className="flex items-center gap-1.5 shadow-sm"
+          >
+            <Plus size={15} />
+            <span>Add User</span>
+          </Button>
+        )}
       </div>
 
       {/* 2. Filter Search Card */}
@@ -324,7 +332,9 @@ export default function UsersPage() {
                     <TableHead className="font-semibold text-zinc-600 h-10">Role</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10">Email Address</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10">Password</TableHead>
-                    <TableHead className="font-semibold text-zinc-600 h-10 w-24 text-center">Actions</TableHead>
+                    {(permission.update || permission.delete) && (
+                      <TableHead className="font-semibold text-zinc-600 h-10 w-24 text-center">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -348,29 +358,35 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-zinc-600 font-medium">{u.email}</TableCell>
                         <TableCell className="text-zinc-500 font-mono text-xs">{u.checkPassword}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Button
-                              onClick={() => openEditModal(u)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                              title="Edit user details"
-                            >
-                              <Edit2 size={14} />
-                            </Button>
+                        {(permission.update || permission.delete) && (
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {permission.update && (
+                                <Button
+                                  onClick={() => openEditModal(u)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                                  title="Edit user details"
+                                >
+                                  <Edit2 size={14} />
+                                </Button>
+                              )}
 
-                            <Button
-                              onClick={() => handleDeleteUser(u.id)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                              title="Remove user account"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
+                              {permission.delete && (
+                                <Button
+                                  onClick={() => handleDeleteUser(u.id)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                  title="Remove user account"
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}

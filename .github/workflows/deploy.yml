@@ -70,7 +70,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t "a2bsoftware-client:${{ steps.vars.outputs.tag }}" \
+            -t "a2bsoftware-frontend:${{ steps.vars.outputs.tag }}" \
             --build-arg NEXT_PUBLIC_API_BASE_URL="${{ vars.NEXT_PUBLIC_API_BASE_URL }}" \
             --build-arg NEXT_PUBLIC_BACKEND_URL="${{ vars.NEXT_PUBLIC_BACKEND_URL }}" \
             --build-arg VERSION="${{ steps.vars.outputs.tag }}" \
@@ -79,7 +79,7 @@ jobs:
             .
 
       - name: Save and compress the image
-        run: docker save "a2bsoftware-client:${{ steps.vars.outputs.tag }}" | gzip > app.tar.gz
+        run: docker save "a2bsoftware-frontend:${{ steps.vars.outputs.tag }}" | gzip > app.tar.gz
 
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -107,6 +107,8 @@ jobs:
         run: |
           ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "bash '${{ vars.DEPLOY_PATH }}/scripts/write-env.sh'" <<EOF
+          ZAMP_KEY=${{ secrets.ZAMP_KEY }}
+          EXIT_HMAC_KEY=${{ secrets.EXIT_HMAC_KEY }}
           NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_BACKEND_URL=${{ vars.NEXT_PUBLIC_BACKEND_URL }}
           DOMAIN=${{ vars.DOMAIN }}
@@ -117,7 +119,7 @@ jobs:
         env:
           SSH_OPTS: -o StrictHostKeyChecking=accept-new -p ${{ secrets.SSH_PORT || '22' }}
         run: |
-          echo "::notice::▶ Deployment started - image a2bsoftware-client:${{ steps.vars.outputs.tag }}"
+          echo "::notice::▶ Deployment started - image a2bsoftware-frontend:${{ steps.vars.outputs.tag }}"
           ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "cd '${{ vars.DEPLOY_PATH }}' && bash scripts/deploy.sh"
 

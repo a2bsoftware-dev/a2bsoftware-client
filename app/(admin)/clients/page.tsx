@@ -27,6 +27,11 @@ import {
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { useModulePermission } from "@/hooks/use-module-permission";
+
+// Matches the "Clients" entry in ACCESS_RIGHTS_MODULES (access-rights page)
+// and MODULE_ID in the backend's ClientController.
+const CLIENTS_MODULE_ID = 14;
 
 interface Client {
   id: string;
@@ -43,6 +48,7 @@ interface PaymentOption {
 }
 
 export default function ClientsPage() {
+  const { permission } = useModulePermission(CLIENTS_MODULE_ID);
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -192,14 +198,16 @@ export default function ClientsPage() {
             Configure client properties, points of contacts, invoicing terms, and manage accounts.
           </p>
         </div>
-        <Button
-          onClick={openAddModal}
-          size="sm"
-          className="flex items-center gap-1.5 shadow-sm"
-        >
-          <Plus size={15} />
-          <span>Add Client</span>
-        </Button>
+        {permission.create && (
+          <Button
+            onClick={openAddModal}
+            size="sm"
+            className="flex items-center gap-1.5 shadow-sm"
+          >
+            <Plus size={15} />
+            <span>Add Client</span>
+          </Button>
+        )}
       </div>
 
       {/* 2. Filter Search Card */}
@@ -250,7 +258,9 @@ export default function ClientsPage() {
                     <TableHead className="font-semibold text-zinc-600 h-10">Contact Person</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10">Contact Number</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10">Payment Terms</TableHead>
-                    <TableHead className="font-semibold text-zinc-600 h-10 w-24 text-center">Actions</TableHead>
+                    {(permission.update || permission.delete) && (
+                      <TableHead className="font-semibold text-zinc-600 h-10 w-24 text-center">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -268,29 +278,35 @@ export default function ClientsPage() {
                             {paymentLabel}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Button
-                              onClick={() => openEditModal(c)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                              title="Edit client details"
-                            >
-                              <Edit2 size={14} />
-                            </Button>
+                        {(permission.update || permission.delete) && (
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {permission.update && (
+                                <Button
+                                  onClick={() => openEditModal(c)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                                  title="Edit client details"
+                                >
+                                  <Edit2 size={14} />
+                                </Button>
+                              )}
 
-                            <Button
-                              onClick={() => handleDeleteClient(c.id)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                              title="Remove client profile"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
+                              {permission.delete && (
+                                <Button
+                                  onClick={() => handleDeleteClient(c.id)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                  title="Remove client profile"
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}

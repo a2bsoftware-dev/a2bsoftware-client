@@ -40,6 +40,11 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { useModulePermission } from "@/hooks/use-module-permission";
+
+// Matches the "Client Api Data" entry in ACCESS_RIGHTS_MODULES (access-rights page)
+// and MODULE_ID in the backend's ClientApiDataController.
+const CLIENT_API_DATA_MODULE_ID = 20;
 
 // A single answer option belonging to a screening qualification question.
 interface QualificationOption {
@@ -137,6 +142,7 @@ function QualificationCard({ qual }: { qual: Qualification }) {
 }
 
 export default function ClientApiDataPage() {
+  const { permission } = useModulePermission(CLIENT_API_DATA_MODULE_ID);
   const [loading, setLoading] = useState(true);
   const [fetchingApi, setFetchingApi] = useState(false);
   const [syncCountry, setSyncCountry] = useState<{ value: string; label: string }>({
@@ -727,90 +733,102 @@ export default function ClientApiDataPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={openAddCampaignModal}
-            size="sm"
-            className="flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus size={15} />
-            <span>Add Campaign</span>
-          </Button>
+          {permission.create && (
+            <Button
+              onClick={openAddCampaignModal}
+              size="sm"
+              className="flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus size={15} />
+              <span>Add Campaign</span>
+            </Button>
+          )}
 
-          <Combobox
-            items={[
-              { value: "all", label: "All Countries" },
-              ...countries.map((c: Country) => ({ value: String(c.id), label: c.name })),
-            ]}
-            value={syncCountry}
-            onValueChange={(value) => {
-              if (!value) return;
-              const selected = value as { value: string; label: string };
-              setSyncCountry(selected);
-              handleFetchData(selected);
-            }}
-          >
-            <ComboboxInput placeholder="Search country..." className="h-9 w-48" />
-            <ComboboxContent>
-              <ComboboxEmpty>No country found.</ComboboxEmpty>
-              <ComboboxList>
-                {(item: { value: string; label: string }) => (
-                  <ComboboxItem key={item.value} value={item}>
-                    {item.label}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
+          {permission.create && (
+            <Combobox
+              items={[
+                { value: "all", label: "All Countries" },
+                ...countries.map((c: Country) => ({ value: String(c.id), label: c.name })),
+              ]}
+              value={syncCountry}
+              onValueChange={(value) => {
+                if (!value) return;
+                const selected = value as { value: string; label: string };
+                setSyncCountry(selected);
+                handleFetchData(selected);
+              }}
+            >
+              <ComboboxInput placeholder="Search country..." className="h-9 w-48" />
+              <ComboboxContent>
+                <ComboboxEmpty>No country found.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item: { value: string; label: string }) => (
+                    <ComboboxItem key={item.value} value={item}>
+                      {item.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          )}
 
-          <Button
-            onClick={() => handleFetchData()}
-            disabled={fetchingApi}
-            size="sm"
-            className="flex items-center gap-1.5 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            {fetchingApi ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <CloudLightning size={15} />
-            )}
-            <span>Sync Surveys Feed</span>
-          </Button>
+          {permission.create && (
+            <Button
+              onClick={() => handleFetchData()}
+              disabled={fetchingApi}
+              size="sm"
+              className="flex items-center gap-1.5 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {fetchingApi ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <CloudLightning size={15} />
+              )}
+              <span>Sync Surveys Feed</span>
+            </Button>
+          )}
 
-          <Button
-            onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
-          >
-            <Settings size={14} />
-            <span>API Settings</span>
-          </Button>
+          {permission.update && (
+            <Button
+              onClick={() => setShowSettingsPanel(!showSettingsPanel)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
+            >
+              <Settings size={14} />
+              <span>API Settings</span>
+            </Button>
+          )}
 
-          <Button
-            onClick={() => setImportModalOpen(true)}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
-          >
-            <Upload size={14} />
-            <span>Import CSV</span>
-          </Button>
+          {permission.create && (
+            <Button
+              onClick={() => setImportModalOpen(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
+            >
+              <Upload size={14} />
+              <span>Import CSV</span>
+            </Button>
+          )}
 
-          <Button
-            onClick={handleExportCsv}
-            disabled={exporting}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
-          >
-            {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-            <span>Export CSV</span>
-          </Button>
+          {permission.read && (
+            <Button
+              onClick={handleExportCsv}
+              disabled={exporting}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 border-zinc-200 text-zinc-600 shadow-sm"
+            >
+              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              <span>Export CSV</span>
+            </Button>
+          )}
         </div>
       </div>
 
       {/* 2. Settings Panel Drawer */}
-      {showSettingsPanel && (
+      {showSettingsPanel && permission.update && (
         <Card className="border-indigo-100 shadow-sm bg-indigo-50/20 dark:bg-zinc-950 animate-in slide-in-from-top duration-250">
           <CardHeader className="py-3 border-b border-indigo-50 dark:border-zinc-800">
             <CardTitle className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
@@ -894,41 +912,43 @@ export default function ClientApiDataPage() {
             <option value="0">Disapproved</option>
           </NativeSelect>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <span className="text-xs text-zinc-400 font-semibold mr-1">
-              Selected ({selectedIds.length})
-            </span>
-            <Button
-              onClick={() => handleBulkOperation(2)}
-              disabled={selectedIds.length === 0}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 shadow-sm border-zinc-200"
-            >
-              <CheckCircle size={13} />
-              <span>Approve</span>
-            </Button>
-            <Button
-              onClick={() => handleBulkOperation(3)}
-              disabled={selectedIds.length === 0}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-8 shadow-sm border-zinc-200"
-            >
-              <XCircle size={13} />
-              <span>Disapprove</span>
-            </Button>
-            <Button
-              onClick={() => handleBulkOperation(1)}
-              disabled={selectedIds.length === 0}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 h-8 shadow-sm border-zinc-200"
-            >
-              <Trash2 size={13} />
-              <span>Delete</span>
-            </Button>
-          </div>
+          {permission.update && (
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <span className="text-xs text-zinc-400 font-semibold mr-1">
+                Selected ({selectedIds.length})
+              </span>
+              <Button
+                onClick={() => handleBulkOperation(2)}
+                disabled={selectedIds.length === 0}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 shadow-sm border-zinc-200"
+              >
+                <CheckCircle size={13} />
+                <span>Approve</span>
+              </Button>
+              <Button
+                onClick={() => handleBulkOperation(3)}
+                disabled={selectedIds.length === 0}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-8 shadow-sm border-zinc-200"
+              >
+                <XCircle size={13} />
+                <span>Disapprove</span>
+              </Button>
+              <Button
+                onClick={() => handleBulkOperation(1)}
+                disabled={selectedIds.length === 0}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 h-8 shadow-sm border-zinc-200"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -959,14 +979,16 @@ export default function ClientApiDataPage() {
                 <TableHeader className="bg-zinc-50/70 dark:bg-zinc-900">
                   <TableRow className="border-b border-zinc-200">
                     <TableHead className="font-semibold text-zinc-600 h-10 w-12 text-center">SN</TableHead>
-                    <TableHead className="font-semibold text-zinc-600 h-10 w-12 text-center">
-                      <input
-                        type="checkbox"
-                        checked={dataset.length > 0 && selectedIds.length === dataset.length}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </TableHead>
+                    {permission.update && (
+                      <TableHead className="font-semibold text-zinc-600 h-10 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          checked={dataset.length > 0 && selectedIds.length === dataset.length}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead
                       onClick={() => handleSort("surveyId")}
                       className="font-semibold text-zinc-600 h-10 cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -1043,14 +1065,16 @@ export default function ClientApiDataPage() {
                     return (
                       <TableRow key={project.id} className="border-b border-zinc-150 hover:bg-zinc-50/50 transition-colors">
                         <TableCell className="text-center font-medium text-zinc-400 py-3">{rowNum}</TableCell>
-                        <TableCell className="text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={(e) => handleSelectRow(e.target.checked, project.id)}
-                            className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-                          />
-                        </TableCell>
+                        {permission.update && (
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleSelectRow(e.target.checked, project.id)}
+                              className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-mono font-bold text-zinc-700 dark:text-zinc-300">
                           {project.surveyId}
                         </TableCell>
@@ -1082,35 +1106,41 @@ export default function ClientApiDataPage() {
 
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Button
-                              onClick={() => openQualificationsView(project)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                              title="View qualifications"
-                            >
-                              <ListChecks size={13} />
-                            </Button>
+                            {permission.read && (
+                              <Button
+                                onClick={() => openQualificationsView(project)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                title="View qualifications"
+                              >
+                                <ListChecks size={13} />
+                              </Button>
+                            )}
 
-                            <Button
-                              onClick={() => openEditCampaignModal(project)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                              title="Edit campaign details"
-                            >
-                              <Edit2 size={13} />
-                            </Button>
+                            {permission.update && (
+                              <Button
+                                onClick={() => openEditCampaignModal(project)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                title="Edit campaign details"
+                              >
+                                <Edit2 size={13} />
+                              </Button>
+                            )}
 
-                            <Button
-                              onClick={() => handleDeleteSingle(project.id)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Delete project"
-                            >
-                              <Trash2 size={13} />
-                            </Button>
+                            {permission.delete && (
+                              <Button
+                                onClick={() => handleDeleteSingle(project.id)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete project"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1399,20 +1429,22 @@ export default function ClientApiDataPage() {
                         )}
                       </Button>
 
-                      <Button
-                        type="button"
-                        disabled={importingQuals || qualifications.length === 0}
-                        onClick={handleImportQualifications}
-                        size="sm"
-                        className="flex items-center gap-1.5 shadow-sm text-xs bg-indigo-600 text-white hover:bg-indigo-700"
-                      >
-                        {importingQuals ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <DownloadCloud size={13} />
-                        )}
-                        <span>Import Local Rules</span>
-                      </Button>
+                      {permission.update && (
+                        <Button
+                          type="button"
+                          disabled={importingQuals || qualifications.length === 0}
+                          onClick={handleImportQualifications}
+                          size="sm"
+                          className="flex items-center gap-1.5 shadow-sm text-xs bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                          {importingQuals ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <DownloadCloud size={13} />
+                          )}
+                          <span>Import Local Rules</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
 

@@ -22,7 +22,7 @@ if [[ $# -ge 1 ]]; then
 else
   if [[ ! -s "$HISTORY_FILE" ]]; then
     echo "✖ No deploy history found (${HISTORY_FILE}) - pass an already-local image ref explicitly:" >&2
-    echo "    rollback.sh a2bsoftware-client:<tag>   (see: docker images)" >&2
+    echo "    rollback.sh a2bsoftware-frontend:<tag>   (see: docker images)" >&2
     exit 1
   fi
   CURRENT_IMAGE="$(tail -n 1 "$HISTORY_FILE" | cut -f3)"

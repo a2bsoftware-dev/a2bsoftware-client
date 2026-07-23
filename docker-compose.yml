@@ -8,7 +8,7 @@
 # start this one.
 #
 # Service:
-#   frontend - Next.js app on http://localhost:5000
+#   frontend - Next.js app on http://localhost:3000
 #
 # Overridable via a .env file next to this compose file or shell env:
 #   NEXT_PUBLIC_API_BASE_URL
@@ -30,4 +30,4 @@ services:
       # from inside this container back to the backend stack on the host.
       - "host.docker.internal:host-gateway"
     ports:
-      - "5000:5000"
+      - "3000:3000"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Polls a slot's /api/health endpoint over its published loopback port
-# (app_blue -> 127.0.0.1:5000, app_green -> 127.0.0.1:5001 - see
+# (app_blue -> 127.0.0.1:3000, app_green -> 127.0.0.1:3001 - see
 # docker-compose.prod.yml) with retries/backoff, bypassing nginx entirely.
 #
-# Usable standalone: ./health-check.sh 5000
+# Usable standalone: ./health-check.sh 3000
 # Or sourced by deploy.sh/rollback.sh for the wait_for_healthy function.
 set -euo pipefail
 

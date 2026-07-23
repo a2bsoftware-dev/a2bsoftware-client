@@ -5,7 +5,7 @@
 #
 # Safe to re-run (every step here is idempotent) - in particular, if this
 # server already runs the sibling a2bsoftware-backend repo (same box, same
-# client.a2bsoftware.com vhost - see the "shared server" note in
+# dashboard.a2bsoftware.com vhost - see the "shared server" note in
 # docs/DEPLOYMENT.md), Docker/nginx/certbot/ufw/the `deploy` user all already
 # exist and this script just no-ops past them to the parts that are new:
 # this repo's own DEPLOY_PATH, its narrowly-scoped nginx-reload sudo rule,
@@ -31,12 +31,12 @@
 # rsync for that - see docs/DEPLOYMENT.md "First-time VPS setup".
 #
 # Usage:
-#   DOMAIN=client.a2bsoftware.com ./server-setup.sh
+#   DOMAIN=dashboard.a2bsoftware.com ./server-setup.sh
 set -euo pipefail
 
-DOMAIN="${DOMAIN:?set DOMAIN, e.g. DOMAIN=client.a2bsoftware.com}"
+DOMAIN="${DOMAIN:?set DOMAIN, e.g. DOMAIN=dashboard.a2bsoftware.com}"
 DEPLOY_USER="${DEPLOY_USER:-deploy}"
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/a2bsoftware-client}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/a2bsoftware-frontend}"
 SSH_PORT="${SSH_PORT:-22}"
 
 if [[ $EUID -ne 0 ]]; then
@@ -68,12 +68,12 @@ chown "$DEPLOY_USER:$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh/authorized_keys"
 chmod 600 "/home/${DEPLOY_USER}/.ssh/authorized_keys"
 
 echo "==> Granting '${DEPLOY_USER}' passwordless sudo for exactly: nginx -t, systemctl reload nginx"
-cat > /etc/sudoers.d/a2b-client-nginx-reload <<EOF
+cat > /etc/sudoers.d/a2b-frontend-nginx-reload <<EOF
 ${DEPLOY_USER} ALL=(root) NOPASSWD: /usr/sbin/nginx -t
 ${DEPLOY_USER} ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
 EOF
-chmod 440 /etc/sudoers.d/a2b-client-nginx-reload
-visudo -cf /etc/sudoers.d/a2b-client-nginx-reload
+chmod 440 /etc/sudoers.d/a2b-frontend-nginx-reload
+visudo -cf /etc/sudoers.d/a2b-frontend-nginx-reload
 
 echo "==> Firewall (ufw): allow SSH/${SSH_PORT}, 80, 443 only"
 ufw allow "${SSH_PORT}/tcp"
@@ -83,7 +83,7 @@ ufw --force enable
 
 echo "==> Disabling the stock nginx default site"
 # Ships enabled by the Ubuntu/Debian nginx package - its `default_server`
-# would otherwise compete with client.a2bsoftware.com's own vhost and
+# would otherwise compete with dashboard.a2bsoftware.com's own vhost and
 # serve the nginx welcome page to anything hitting this IP by hostname.
 rm -f /etc/nginx/sites-enabled/default
 
@@ -113,6 +113,8 @@ Next steps:
      Secret   SSH_PORT                 = ${SSH_PORT}
      Secret   SSH_USER                 = ${DEPLOY_USER}
      Secret   SSH_PRIVATE_KEY          = <contents of a2b_deploy_key - the PRIVATE half>
+     Secret   ZAMP_KEY                 = <application secret>
+     Secret   EXIT_HMAC_KEY            = <application secret>
      Variable DEPLOY_PATH              = ${DEPLOY_PATH}
      Variable DOMAIN                   = ${DOMAIN}
      Variable NEXT_PUBLIC_API_BASE_URL = https://${DOMAIN}
@@ -124,13 +126,13 @@ Next steps:
    a2bsoftware-backend on this same domain).
 
 4. Seed this repo's one piece of the shared nginx vhost - the upstream
-   include a2bsoftware-backend's client.a2bsoftware.com.conf `include`s
+   include a2bsoftware-backend's dashboard.a2bsoftware.com.conf `include`s
    (see that repo's nginx config) - BEFORE that repo's nginx is reloaded
    with the include pointed at it, or nginx will fail to start:
      install -d -o ${DEPLOY_USER} -g ${DEPLOY_USER} ${DEPLOY_PATH}/state
      cat > ${DEPLOY_PATH}/state/upstream.conf <<'UPSTREAM_EOF'
-     upstream a2b_client {
-       server 127.0.0.1:5000;
+     upstream a2b_frontend {
+       server 127.0.0.1:3000;
      }
      UPSTREAM_EOF
      chown ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}/state/upstream.conf

@@ -36,6 +36,9 @@ interface SurveyTransaction {
   ref_id: string;
   user_id: string;
   country_name?: string;
+  client_cpi: number | string;
+  vendor_cpi: number | string;
+  profit: number | string;
 }
 
 interface SurveyDetailsModalProps {
@@ -102,17 +105,24 @@ export default function SurveyDetailsModal({
                 <TableHead className="font-bold">Ref ID</TableHead>
                 <TableHead className="font-bold">UID</TableHead>
                 <TableHead className="font-bold">Country</TableHead>
+                <TableHead className="font-bold text-right">Client CPI</TableHead>
+                <TableHead className="font-bold text-right">Vendor CPI</TableHead>
+                <TableHead className="font-bold text-right">Profit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={15} className="h-32 text-center text-zinc-500">
+                  <TableCell colSpan={18} className="h-32 text-center text-zinc-500">
                     No transactions found for today.
                   </TableCell>
                 </TableRow>
               ) : (
                 data.map((row, index) => {
+                  const clientCpi = typeof row.client_cpi === "number" ? row.client_cpi : parseFloat(row.client_cpi) || 0;
+                  const vendorCpi = typeof row.vendor_cpi === "number" ? row.vendor_cpi : parseFloat(row.vendor_cpi) || 0;
+                  const profit = typeof row.profit === "number" ? row.profit : parseFloat(row.profit) || 0;
+
                   return (
                     <TableRow key={row.id || index} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
                       <TableCell className="text-center text-zinc-500 font-mono text-xs">{index + 1}</TableCell>
@@ -138,6 +148,11 @@ export default function SurveyDetailsModal({
                         {row.user_id}
                       </TableCell>
                       <TableCell className="text-xs">{row.country_name || "NA"}</TableCell>
+                      <TableCell className="text-right text-xs font-mono">${clientCpi.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-xs font-mono">${vendorCpi.toFixed(2)}</TableCell>
+                      <TableCell className={`text-right text-xs font-bold font-mono ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                        ${profit.toFixed(2)}
+                      </TableCell>
                     </TableRow>
                   );
                 })
