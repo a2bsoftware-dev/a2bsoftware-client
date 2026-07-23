@@ -15,6 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { useModulePermission } from "@/hooks/use-module-permission";
+
+// Matches the "Projects" entry in ACCESS_RIGHTS_MODULES (access-rights page)
+// and MODULE_ID in the backend's ProjectController.
+const PROJECTS_MODULE_ID = 6;
 
 // Generic {value,label} option used for simple dropdowns (study types, statuses, devices, checklist items)
 interface OptionItem {
@@ -114,6 +119,10 @@ interface ProjectFormDataResponse extends FormOptions {
   allDevicesIds?: string[];
   allChecklistIds?: string[];
   statistics: Statistics;
+  // Present only for a "Clients"-role requester - their own Client record's id,
+  // used to default-select (and, since `clients` is filtered to just this one
+  // entry for them, effectively lock) the Client dropdown on a new project.
+  currentUserClientId?: string;
 }
 
 export default function AddEditProjectPage() {
@@ -121,6 +130,8 @@ export default function AddEditProjectPage() {
   const router = useRouter();
   const idParam = params?.id;
   const project_id: string | null = Array.isArray(idParam) ? idParam[0] : (idParam || null);
+  const requiredAction = project_id ? "update" : "create";
+  const { permission, loading: permissionLoading } = useModulePermission(PROJECTS_MODULE_ID);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -238,6 +249,7 @@ export default function AddEditProjectPage() {
             setFormData(prev => ({
               ...prev,
               id: "",
+              client_id: data.currentUserClientId || prev.client_id,
             }));
             setSearchProjectText("Self Project");
           }
@@ -260,6 +272,18 @@ export default function AddEditProjectPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProjectInitData();
   }, [project_id, loadProjectInitData]);
+
+  useEffect(() => {
+    // Backend enforces the real boundary (ProjectController requires create/
+    // update access), but a "View Only" user who reaches this route directly
+    // by URL should never even see the form - bounce them back to the list.
+    if (permissionLoading) return;
+    const allowed = requiredAction === "update" ? permission.update : permission.create;
+    if (!allowed) {
+      toast.error(`You don't have ${requiredAction} access to Projects.`);
+      router.replace("/projects");
+    }
+  }, [permissionLoading, permission, requiredAction, router]);
 
   // Handle device toggling
   const handleDeviceToggle = (val: string) => {
@@ -366,7 +390,10 @@ export default function AddEditProjectPage() {
     }
   };
 
-  if (loading) {
+  const isEditMode = Boolean(project_id);
+  const allowed = requiredAction === "update" ? permission.update : permission.create;
+
+  if (loading || permissionLoading || !allowed) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-zinc-600" />
@@ -374,8 +401,6 @@ export default function AddEditProjectPage() {
       </div>
     );
   }
-
-  const isEditMode = Boolean(project_id);
 
   return (
     <div className="space-y-6">
@@ -763,7 +788,7 @@ export default function AddEditProjectPage() {
             <CardContent className="pt-6 pb-6 space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-zinc-500">
-                  Client buyer <span className="text-red-500">*</span>
+                  Client <span className="text-red-500">*</span>
                 </Label>
                 <NativeSelect
                   value={formData.client_id}
