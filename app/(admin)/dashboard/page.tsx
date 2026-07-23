@@ -29,6 +29,9 @@ interface SurveyInformationItem {
   ref_id: string;
   user_id: string;
   country_name?: string;
+  client_cpi: number | string;
+  vendor_cpi: number | string;
+  profit: number | string;
   status: number;
 }
 
