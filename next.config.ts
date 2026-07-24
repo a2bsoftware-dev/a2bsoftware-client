@@ -4,6 +4,20 @@ const nextConfig: NextConfig = {
   output: "standalone",
   async rewrites() {
     return [
+      // Spring Boot API proxy - routes every browser call to /api/* through
+      // this app's own origin instead of straight to NEXT_PUBLIC_API_BASE_URL
+      // (a different port). A same-origin fetch carries the auth cookie as a
+      // normal first-party request regardless of the browser's third-party-
+      // cookie policy (Incognito blocks direct cross-port cookie access by
+      // default, which is why /api/users etc. came back 401 "anonymous" even
+      // with a valid session). API_INTERNAL_URL is server-side only (no
+      // NEXT_PUBLIC_ prefix) since this runs in the Next.js server process,
+      // not the browser - see docker-compose.yml for the containerized
+      // override (host.docker.internal, not localhost, from inside a container).
+      {
+        source: "/api/:path*",
+        destination: `${process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081"}/api/:path*`,
+      },
       // Assets proxy
       {
         source: "/assets/:path*",

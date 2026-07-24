@@ -8,7 +8,12 @@
 # start this one.
 #
 # Service:
-#   frontend - Next.js app on http://localhost:3000
+#   frontend - Next.js app (this is the internal "client" admin app) on
+#   http://localhost:5000 - container listens on 5000 internally too (PORT
+#   below overrides the Dockerfile's ENV PORT=3000 default), so host and
+#   container ports always match 1:1 and can't silently drift apart. Chosen
+#   to avoid colliding with a2bsoftware-frontend (3000) or a2bsoftware-vendor
+#   (4000) when all three run at once.
 #
 # Overridable via a .env file next to this compose file or shell env:
 #   NEXT_PUBLIC_API_BASE_URL
@@ -22,6 +27,16 @@ services:
         # backend directly, so this must be an address reachable from the
         # user's browser, not just from inside the Docker network.
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8081}
+        # Baked into the routes manifest at build time (next.config.ts's
+        # /api/:path* rewrite destination) - a runtime `environment:` value
+        # arrives too late, since standalone output resolves rewrites() once,
+        # during `next build`, not at container start. This repo's compose
+        # project isn't on the same Docker network as a2bsoftware-backend's,
+        # so it reaches it via host.docker.internal (see extra_hosts below)
+        # rather than a service name.
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://host.docker.internal:8081}
+    environment:
+      PORT: "5000"
     env_file:
       - ./.env
     extra_hosts:
@@ -30,4 +45,4 @@ services:
       # from inside this container back to the backend stack on the host.
       - "host.docker.internal:host-gateway"
     ports:
-      - "3000:3000"
+      - "5000:5000"

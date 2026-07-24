@@ -28,42 +28,43 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 
-// Supplier allocation row, as returned by /supliers/init and used for the
-// add/edit modal (openEditModal reads the same shape back from a row).
+// Supplier allocation row, as returned by GET /api/projects/{id}/suppliers
+// (SupplierListItemDto on the backend) and used for the add/edit modal
+// (openEditModal reads the same shape back from a row).
 interface Supplier {
-  id: number | string;
-  vendorId?: number | string;
+  id: string;
+  vendorId: string;
   vendorName?: string;
-  project_name?: string;
   status: number;
-  showStatus?: string;
-  hits?: number | string;
-  quota_full?: number | string;
-  complete?: number | string;
-  disqualify?: number | string;
-  securityTerm?: number | string;
-  ir?: number | string;
-  cost_per_complete?: number | string;
-  complete_request?: number | string;
-  max_redirect?: number | string;
+  statusLabel?: string;
+  hits?: number;
+  quotaFull?: number;
+  complete?: number;
+  disqualify?: number;
+  securityTerm?: number;
+  ir?: string;
+  costPerComplete?: number;
+  completeRequest?: number;
+  maxRedirect?: number;
   completeLink?: string;
   disqualifyLink?: string;
   qoutafullLink?: string;
   securityTermlink?: string;
   notes?: string;
-  data_redirect_ids?: string[];
+  dataRedirectIds?: string[];
 }
 
 // Generic {value, label} option, used for both status options and the
-// "data to ask on redirect" checklist returned by /supliers/add-edit-init-data.
+// "data to ask on redirect" checklist returned by /api/suppliers/form-metadata.
 interface SelectOption {
   value: string | number;
   label: string;
 }
 
 interface VendorOption {
-  id: number | string;
+  id: string;
   vendorName: string;
 }
 
@@ -74,24 +75,24 @@ interface FormMetadata {
 }
 
 // A single click/transaction row shown in the "View Clicks Details" modal
-// and exported to CSV.
+// and exported to CSV - matches SurveyDetailRowDto from GET /api/projects/survey-details.
 interface SupplierDetailRow {
-  id: number | string;
-  pid: number | string;
-  gid: number | string;
+  id: string;
+  pid: string;
+  gid: string;
   vendorName?: string;
-  project_name?: string;
+  projectName?: string;
   clientName?: string;
-  start_ip_address?: string;
-  end_ip_address?: string;
-  start_time?: string;
-  end_time?: string;
-  start_date?: string;
-  end_date?: string;
-  ref_id?: string;
-  user_id?: string;
+  startIpAddress?: string;
+  endIpAddress?: string;
+  startTime?: string;
+  endTime?: string;
+  startDate?: string;
+  endDate?: string;
+  refId?: string;
+  userId?: string;
   status?: string;
-  country_name?: string;
+  countryName?: string;
 }
 
 export default function SuppliersPage() {
@@ -100,7 +101,6 @@ export default function SuppliersPage() {
   const project_id = Array.isArray(params?.project_id) ? params.project_id[0] : params?.project_id || "";
 
   const [loading, setLoading] = useState(true);
-  const [origin, setOrigin] = useState("http://localhost:3000");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Allocations data
@@ -119,19 +119,18 @@ export default function SuppliersPage() {
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [savingSupplier, setSavingSupplier] = useState(false);
   const [supplierData, setSupplierData] = useState({
-    id: 0 as number | string,
-    project_id: project_id,
-    vendor_id: "",
-    cost_per_complete: "",
-    complete_request: "",
-    max_redirect: "",
+    id: "",
+    vendorId: "",
+    costPerComplete: "",
+    completeRequest: "",
+    maxRedirect: "",
     completeLink: "",
     disqualifyLink: "",
     qoutafullLink: "",
     securityTermlink: "",
     notes: "",
     status: "2", // Testing
-    data_redirect_ids: [] as string[],
+    dataRedirectIds: [] as string[],
   });
 
   // Modal 2: View Clicks Details popup states
@@ -141,25 +140,11 @@ export default function SuppliersPage() {
   const [detailsList, setDetailsList] = useState<SupplierDetailRow[]>([]);
   const [exportingDetails, setExportingDetails] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // window.location isn't available during SSR, so the real origin can
-      // only be read after mount, client-only - this is why it needs an
-      // effect at all, not a render-time computation.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOrigin(window.location.origin);
-    }
-  }, []);
-
   // Fetch supplier allocations list
   const loadSuppliers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/supliers/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id }),
-      });
+      const res = await apiFetch(`/api/projects/${project_id}/suppliers`);
 
       if (res.ok) {
         const data = await res.json();
@@ -167,9 +152,7 @@ export default function SuppliersPage() {
           setDataset(data.suppliers || []);
           if (data.project) {
             setProjectCPC(data.project.cpc || 0);
-          }
-          if (data.suppliers?.[0]) {
-            setProjectName(data.suppliers[0].project_name || "");
+            setProjectName(data.project.projectName || "");
           }
         }
       }
@@ -184,7 +167,7 @@ export default function SuppliersPage() {
   // Fetch lookup lists
   const loadFormMetadata = async () => {
     try {
-      const res = await fetch("/supliers/add-edit-init-data", { method: "POST" });
+      const res = await apiFetch("/api/suppliers/form-metadata");
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -211,15 +194,11 @@ export default function SuppliersPage() {
 
   // Handle autocomplete Vendor Details to prefill callback links
   const handleVendorChange = async (vendorId: string) => {
-    setSupplierData(prev => ({ ...prev, vendor_id: vendorId }));
+    setSupplierData(prev => ({ ...prev, vendorId }));
     if (!vendorId) return;
 
     try {
-      const res = await fetch("/supliers/get-vendor-details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendor_id: vendorId }),
-      });
+      const res = await apiFetch(`/api/suppliers/vendor/${vendorId}`);
 
       if (res.ok) {
         const data = await res.json();
@@ -240,35 +219,34 @@ export default function SuppliersPage() {
   };
 
   const handleDataAskToggle = (val: string) => {
-    const current = [...supplierData.data_redirect_ids];
+    const current = [...supplierData.dataRedirectIds];
     if (current.includes(val)) {
       setSupplierData({
         ...supplierData,
-        data_redirect_ids: current.filter(id => id !== val)
+        dataRedirectIds: current.filter(id => id !== val)
       });
     } else {
       setSupplierData({
         ...supplierData,
-        data_redirect_ids: [...current, val]
+        dataRedirectIds: [...current, val]
       });
     }
   };
 
   const openAddModal = () => {
     setSupplierData({
-      id: 0,
-      project_id: project_id,
-      vendor_id: "",
-      cost_per_complete: String(projectCPC * 0.6), // Autofill CPC proposal
-      complete_request: "",
-      max_redirect: "",
+      id: "",
+      vendorId: "",
+      costPerComplete: String(projectCPC * 0.6), // Autofill CPC proposal
+      completeRequest: "",
+      maxRedirect: "",
       completeLink: "",
       disqualifyLink: "",
       qoutafullLink: "",
       securityTermlink: "",
       notes: "",
       status: "2",
-      data_redirect_ids: [],
+      dataRedirectIds: [],
     });
     setSupplierModalOpen(true);
   };
@@ -276,18 +254,17 @@ export default function SuppliersPage() {
   const openEditModal = (sup: Supplier) => {
     setSupplierData({
       id: sup.id,
-      project_id: project_id,
-      vendor_id: String(sup.vendorId),
-      cost_per_complete: String(sup.cost_per_complete),
-      complete_request: String(sup.complete_request),
-      max_redirect: String(sup.max_redirect),
+      vendorId: String(sup.vendorId),
+      costPerComplete: String(sup.costPerComplete ?? ""),
+      completeRequest: String(sup.completeRequest ?? ""),
+      maxRedirect: String(sup.maxRedirect ?? ""),
       completeLink: sup.completeLink || "",
       disqualifyLink: sup.disqualifyLink || "",
       qoutafullLink: sup.qoutafullLink || "",
       securityTermlink: sup.securityTermlink || "",
       notes: sup.notes || "",
       status: String(sup.status),
-      data_redirect_ids: sup.data_redirect_ids || [],
+      dataRedirectIds: sup.dataRedirectIds || [],
     });
     setSupplierModalOpen(true);
   };
@@ -295,8 +272,8 @@ export default function SuppliersPage() {
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!supplierData.vendor_id || !supplierData.cost_per_complete || 
-        !supplierData.complete_request || !supplierData.max_redirect ||
+    if (!supplierData.vendorId || !supplierData.costPerComplete ||
+        !supplierData.completeRequest || !supplierData.maxRedirect ||
         !supplierData.completeLink || !supplierData.disqualifyLink ||
         !supplierData.qoutafullLink || !supplierData.securityTermlink ||
         !supplierData.status) {
@@ -306,11 +283,29 @@ export default function SuppliersPage() {
 
     setSavingSupplier(true);
     try {
-      const res = await fetch("/supliers/saveSuplier", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(supplierData),
-      });
+      const isUpdate = Boolean(supplierData.id);
+      const body = {
+        vendorId: supplierData.vendorId,
+        costPerComplete: Number(supplierData.costPerComplete),
+        completeRequest: Number(supplierData.completeRequest),
+        maxRedirect: Number(supplierData.maxRedirect),
+        completeLink: supplierData.completeLink,
+        disqualifyLink: supplierData.disqualifyLink,
+        qoutafullLink: supplierData.qoutafullLink,
+        securityTermlink: supplierData.securityTermlink,
+        notes: supplierData.notes,
+        status: Number(supplierData.status),
+        dataRedirectIds: supplierData.dataRedirectIds,
+      };
+
+      const res = await apiFetch(
+        isUpdate ? `/api/suppliers/${supplierData.id}` : `/api/projects/${project_id}/suppliers`,
+        {
+          method: isUpdate ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
 
       if (res.ok) {
         const data = await res.json();
@@ -330,18 +325,18 @@ export default function SuppliersPage() {
     }
   };
 
-  const handleRemoveSupplier = async (id: number | string) => {
+  const handleRemoveSupplier = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this supplier allocation?")) return;
 
     try {
-      const res = await fetch(`/supliers/removeSuplier/${id}`);
+      const res = await apiFetch(`/api/suppliers/${id}`, { method: "DELETE" });
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
           toast.success(data.message || "Supplier allocation removed successfully");
           loadSuppliers();
         } else {
-          toast.error(data.error || "Failed to remove supplier allocation");
+          toast.error(data.message || "Failed to remove supplier allocation");
         }
       }
     } catch (err) {
@@ -350,7 +345,9 @@ export default function SuppliersPage() {
     }
   };
 
-  // View clicks table in detail modal
+  // View clicks table in detail modal - reuses the project-wide survey-details
+  // endpoint, scoped to this vendor via gid (the vendor's own id, not this
+  // allocation's id - see SurveyRouterController/ManageSupplier).
   const openDetailsModal = async (sup: Supplier, statusFilter: number | null = null) => {
     setDetailsSupplier(sup);
     setDetailsList([]);
@@ -358,20 +355,16 @@ export default function SuppliersPage() {
     setLoadingDetails(true);
 
     try {
-      const res = await fetch("/supliers/show-project-survey-details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pid: project_id,
-          gid: sup.id,
-          status: statusFilter
-        })
-      });
+      const query = new URLSearchParams({ projectId: String(project_id), gid: String(sup.vendorId) });
+      if (statusFilter !== null) {
+        query.set("status", String(statusFilter));
+      }
+      const res = await apiFetch(`/api/projects/survey-details?${query.toString()}`);
 
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setDetailsList(data.suplierSurveyDetails || []);
+          setDetailsList(data.surveyInformations || []);
         }
       }
     } catch (err) {
@@ -390,7 +383,7 @@ export default function SuppliersPage() {
       let csvContent = "SN,Project ID,Supplier ID,Supplier Name,Our PO,Client,Start IP,End IP,Start Time,End Time,Start Date,End Date,Ref ID,UID,Status,Country\n";
       detailsList.forEach((row, idx) => {
         const escapeCsv = (str: string | number | null | undefined) => `"${String(str || "").replace(/"/g, '""')}"`;
-        csvContent += `${idx + 1},${row.pid},${row.gid},${escapeCsv(row.vendorName)},${escapeCsv(row.project_name)},${escapeCsv(row.clientName)},${row.start_ip_address},${row.end_ip_address},${row.start_time},${row.end_time},${row.start_date},${row.end_date},${escapeCsv(row.ref_id)},${escapeCsv(row.user_id)},${row.status},${escapeCsv(row.country_name)}\n`;
+        csvContent += `${idx + 1},${row.pid},${row.gid},${escapeCsv(row.vendorName)},${escapeCsv(row.projectName)},${escapeCsv(row.clientName)},${row.startIpAddress},${row.endIpAddress},${row.startTime},${row.endTime},${row.startDate},${row.endDate},${escapeCsv(row.refId)},${escapeCsv(row.userId)},${row.status},${escapeCsv(row.countryName)}\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv" });
@@ -430,6 +423,16 @@ export default function SuppliersPage() {
     setTimeout(() => {
       setCopiedKey(null);
     }, 2000);
+  };
+
+  // The link vendors actually get sent - hits the Spring Boot backend's public
+  // routing gateway directly (SurveyRouterController, /api/public/survey/**),
+  // not this frontend. pid/gid are UUIDs so encoding is a no-op today, but the
+  // vendor-appended user_id can contain arbitrary characters, so every part is
+  // still run through encodeURIComponent rather than string-concatenated raw.
+  const buildSurveyStartUrl = () => {
+    const query = `pid=${encodeURIComponent(project_id)}&gid=${encodeURIComponent(supplierData.vendorId)}&user_id=`;
+    return `${API_BASE_URL}/api/public/survey/start?${query}`;
   };
 
   return (
@@ -487,7 +490,6 @@ export default function SuppliersPage() {
                 <TableHeader className="bg-zinc-50/70 dark:bg-zinc-900">
                   <TableRow className="border-b border-zinc-200">
                     <TableHead className="font-semibold text-zinc-600 h-10 w-12 text-center">SN</TableHead>
-                    <TableHead className="font-semibold text-zinc-600 h-10 w-14 text-center">ID</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10">Panel Name</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Status</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Hits</TableHead>
@@ -505,33 +507,32 @@ export default function SuppliersPage() {
                     return (
                       <TableRow key={supplier.id} className="border-b border-zinc-150 hover:bg-zinc-50/50 transition-colors">
                         <TableCell className="text-center font-medium text-zinc-400 py-3">{idx + 1}</TableCell>
-                        <TableCell className="text-center font-bold text-zinc-800 dark:text-zinc-200">{supplier.id}</TableCell>
                         <TableCell className="font-semibold text-zinc-900 dark:text-zinc-100">
                           {supplier.vendorName || "Internal Team"}
                         </TableCell>
                         <TableCell className="text-center">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusColor(supplier.status)}`}>
-                            {supplier.showStatus}
+                            {supplier.statusLabel}
                           </span>
                         </TableCell>
 
                         <TableCell className="text-center font-mono font-semibold text-zinc-600">{supplier.hits}</TableCell>
-                        
+
                         <TableCell className="text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openDetailsModal(supplier, 3)}
                             className="h-7 px-2 font-mono hover:bg-zinc-100 text-zinc-600 select-text"
                           >
-                            {supplier.quota_full}
+                            {supplier.quotaFull}
                           </Button>
                         </TableCell>
 
                         <TableCell className="text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openDetailsModal(supplier, 1)}
                             className="h-7 px-2 font-mono hover:bg-cyan-50 hover:text-cyan-700 text-cyan-600 dark:text-cyan-400 select-text"
                           >
@@ -540,9 +541,9 @@ export default function SuppliersPage() {
                         </TableCell>
 
                         <TableCell className="text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openDetailsModal(supplier, 2)}
                             className="h-7 px-2 font-mono hover:bg-red-50 hover:text-red-700 text-red-600 dark:text-red-400 select-text"
                           >
@@ -551,9 +552,9 @@ export default function SuppliersPage() {
                         </TableCell>
 
                         <TableCell className="text-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openDetailsModal(supplier, 4)}
                             className="h-7 px-2 font-mono hover:bg-zinc-100 text-zinc-600 select-text"
                           >
@@ -562,8 +563,8 @@ export default function SuppliersPage() {
                         </TableCell>
 
                         <TableCell className="text-center font-mono font-bold text-zinc-700 dark:text-zinc-300">{supplier.ir}%</TableCell>
-                        <TableCell className="text-center font-mono text-zinc-600 font-medium">${supplier.cost_per_complete}</TableCell>
-                        
+                        <TableCell className="text-center font-mono text-zinc-600 font-medium">${supplier.costPerComplete}</TableCell>
+
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button
@@ -621,7 +622,7 @@ export default function SuppliersPage() {
                   </Label>
                   <NativeSelect
                     id="supplierVendorSelect"
-                    value={supplierData.vendor_id}
+                    value={supplierData.vendorId}
                     onChange={(e) => handleVendorChange(e.target.value)}
                     required
                   >
@@ -641,8 +642,8 @@ export default function SuppliersPage() {
                     type="number"
                     step="0.01"
                     placeholder="CPC payout"
-                    value={supplierData.cost_per_complete}
-                    onChange={(e) => setSupplierData({ ...supplierData, cost_per_complete: e.target.value })}
+                    value={supplierData.costPerComplete}
+                    onChange={(e) => setSupplierData({ ...supplierData, costPerComplete: e.target.value })}
                     required
                   />
                 </div>
@@ -655,8 +656,8 @@ export default function SuppliersPage() {
                     id="supplierReqComplete"
                     type="number"
                     placeholder="Target completes requested"
-                    value={supplierData.complete_request}
-                    onChange={(e) => setSupplierData({ ...supplierData, complete_request: e.target.value })}
+                    value={supplierData.completeRequest}
+                    onChange={(e) => setSupplierData({ ...supplierData, completeRequest: e.target.value })}
                     required
                   />
                 </div>
@@ -669,8 +670,8 @@ export default function SuppliersPage() {
                     id="supplierMaxRedirect"
                     type="number"
                     placeholder="Max redirects clicks allowed"
-                    value={supplierData.max_redirect}
-                    onChange={(e) => setSupplierData({ ...supplierData, max_redirect: e.target.value })}
+                    value={supplierData.maxRedirect}
+                    onChange={(e) => setSupplierData({ ...supplierData, maxRedirect: e.target.value })}
                     required
                   />
                 </div>
@@ -772,13 +773,13 @@ export default function SuppliersPage() {
                 </Label>
                 <div className="flex flex-wrap items-center gap-3">
                   {options.dataToAskOnRedirect.map((opt: SelectOption) => {
-                    const isChecked = supplierData.data_redirect_ids.includes(String(opt.value));
+                    const isChecked = supplierData.dataRedirectIds.includes(String(opt.value));
                     return (
-                      <div 
+                      <div
                         key={opt.value}
                         onClick={() => handleDataAskToggle(String(opt.value))}
                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold cursor-pointer select-none transition-all ${
-                          isChecked 
+                          isChecked
                             ? "bg-cyan-50 border-cyan-300 text-cyan-800 dark:bg-cyan-950/20 dark:border-cyan-900"
                             : "bg-white border-zinc-200 text-zinc-500 dark:bg-zinc-950 dark:border-zinc-800"
                         }`}
@@ -796,52 +797,33 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
-              {Boolean(supplierData.id) && (
+              {Boolean(supplierData.vendorId) && (
                 <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wide block">
-                    Link Configurations
+                    Link Configuration
                   </span>
-                  
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-zinc-400">Supplier Survey Link</Label>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          readOnly
-                          value={`${origin}/start-survey?pid=${project_id}&gid=${supplierData.id}&user_id=`}
-                          className="font-mono text-[10px] bg-zinc-50 select-all cursor-pointer h-8 py-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => copySurveyUrl(`${origin}/start-survey?pid=${project_id}&gid=${supplierData.id}&user_id=`, "survey-link")}
-                          className="h-8 w-8 flex items-center justify-center shrink-0 border-zinc-200"
-                        >
-                          {copiedKey === "survey-link" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                        </Button>
-                      </div>
-                    </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-zinc-400">Supplier Survey Test Link</Label>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          readOnly
-                          value={`${origin}/start-survey?pid=${project_id}&gid=${supplierData.id}&user_id=&test=1`}
-                          className="font-mono text-[10px] bg-zinc-50 select-all cursor-pointer h-8 py-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => copySurveyUrl(`${origin}/start-survey?pid=${project_id}&gid=${supplierData.id}&user_id=&test=1`, "test-link")}
-                          className="h-8 w-8 flex items-center justify-center shrink-0 border-zinc-200"
-                        >
-                          {copiedKey === "test-link" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                        </Button>
-                      </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-zinc-400">Supplier Survey Link</Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        readOnly
+                        value={buildSurveyStartUrl()}
+                        className="font-mono text-[10px] bg-zinc-50 select-all cursor-pointer h-8 py-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copySurveyUrl(buildSurveyStartUrl(), "survey-link")}
+                        className="h-8 w-8 flex items-center justify-center shrink-0 border-zinc-200"
+                      >
+                        {copiedKey === "survey-link" ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      </Button>
                     </div>
+                    <p className="text-[10px] text-zinc-400">
+                      Give this link to the vendor - they append their own respondent id after <code>user_id=</code>.
+                    </p>
                   </div>
                 </div>
               )}
@@ -933,16 +915,16 @@ export default function SuppliersPage() {
                           <TableCell className="text-center font-medium text-zinc-400 py-2">{idx + 1}</TableCell>
                           <TableCell className="text-center font-bold text-zinc-800 dark:text-zinc-200">{row.pid}</TableCell>
                           <TableCell className="text-center text-zinc-500 font-mono">{row.gid}</TableCell>
-                          <TableCell className="font-medium text-zinc-700 dark:text-zinc-300 max-w-[100px] truncate" title={row.project_name}>{row.project_name}</TableCell>
-                          <TableCell className="text-zinc-500 font-mono">{row.start_ip_address}</TableCell>
-                          <TableCell className="text-zinc-500 font-mono">{row.end_ip_address}</TableCell>
-                          <TableCell className="text-zinc-600 font-mono">{row.start_date} {row.start_time}</TableCell>
-                          <TableCell className="text-zinc-600 font-mono">{row.end_date} {row.end_time}</TableCell>
-                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.ref_id}>{row.ref_id}</TableCell>
-                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.user_id}>{row.user_id}</TableCell>
+                          <TableCell className="font-medium text-zinc-700 dark:text-zinc-300 max-w-[100px] truncate" title={row.projectName}>{row.projectName}</TableCell>
+                          <TableCell className="text-zinc-500 font-mono">{row.startIpAddress}</TableCell>
+                          <TableCell className="text-zinc-500 font-mono">{row.endIpAddress}</TableCell>
+                          <TableCell className="text-zinc-600 font-mono">{row.startDate} {row.startTime}</TableCell>
+                          <TableCell className="text-zinc-600 font-mono">{row.endDate} {row.endTime}</TableCell>
+                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.refId}>{row.refId}</TableCell>
+                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.userId}>{row.userId}</TableCell>
                           <TableCell className="text-center">
                             <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${
-                              row.status === "Complete" 
+                              row.status === "Complete"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
                                 : row.status === "Disqualify"
                                 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400"
@@ -955,7 +937,7 @@ export default function SuppliersPage() {
                               {row.status}
                             </span>
                           </TableCell>
-                          <TableCell className="text-zinc-600 font-medium">{row.country_name}</TableCell>
+                          <TableCell className="text-zinc-600 font-medium">{row.countryName}</TableCell>
                         </TableRow>
                       );
                     })}

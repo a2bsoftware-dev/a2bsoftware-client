@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 
 export default function ClientLinksPage() {
-  const [origin, setOrigin] = useState("http://localhost:3000");
+  const [origin, setOrigin] = useState("http://localhost:5000");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {

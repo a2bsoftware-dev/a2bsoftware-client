@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, Loader2, Save,
   Download, FileSpreadsheet, UserCheck,
-  Monitor, Smartphone, Tablet
+  Monitor, Smartphone, Tablet,
+  Copy, Check
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,10 @@ interface ProjectData {
   vendorCpi?: string | number;
   surveyLink?: string;
   surveyTestLink?: string;
+  completeRedirectId?: string;
+  disqualifyRedirectId?: string;
+  terminateRedirectId?: string;
+  quotaFullRedirectId?: string;
   reqComplete: string | number;
   ir: string | number;
   loi: string | number;
@@ -123,6 +128,46 @@ interface ProjectFormDataResponse extends FormOptions {
   // used to default-select (and, since `clients` is filtered to just this one
   // entry for them, effectively lock) the Client dropdown on a new project.
   currentUserClientId?: string;
+}
+
+// Termination callback URL, one per outcome (SurveyRouterController's
+// /c_{id}, /d_{id}, /t_{id}, /q_{id}) - auto-generated once at project creation,
+// pasted by the client into their own survey platform's exit-redirect settings.
+function CopyableUrl({ label, url }: { label: string; url?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast.success(`${label} copied to clipboard`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-semibold text-zinc-500">{label}</Label>
+      {url ? (
+        <div className="flex items-center gap-1.5 h-10 px-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+          <span className="flex-1 truncate text-xs text-indigo-600 dark:text-indigo-400">{url}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={copy}
+            className="h-6 w-6 shrink-0 text-zinc-500 hover:text-zinc-950"
+            title={`Copy ${label}`}
+          >
+            {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+          </Button>
+        </div>
+      ) : (
+        <div className="h-10 px-3 flex items-center rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 text-xs text-zinc-400">
+          Save the project once to generate this link
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AddEditProjectPage() {
@@ -272,6 +317,28 @@ export default function AddEditProjectPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProjectInitData();
   }, [project_id, loadProjectInitData]);
+
+  // Live hit counts: while editing an existing project, silently refresh just
+  // the statistics strip every few seconds. Deliberately NOT reusing
+  // loadProjectInitData here - that would also overwrite formData and stomp
+  // on whatever the user is actively typing.
+  useEffect(() => {
+    if (!project_id) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiFetch(`${API_BASE_URL}/api/projects/form-data?id=${project_id}`);
+        if (res.ok) {
+          const data: ProjectFormDataResponse = await res.json();
+          if (data.success && data.statistics) {
+            setStatistics(data.statistics);
+          }
+        }
+      } catch (err) {
+        console.error("Error refreshing project statistics", err);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [project_id]);
 
   useEffect(() => {
     // Backend enforces the real boundary (ProjectController requires create/
@@ -691,6 +758,23 @@ export default function AddEditProjectPage() {
                   rows={3}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Termination Callback URLs */}
+        <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+          <CardHeader className="py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900">
+            <CardTitle className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+              Termination Callback URLs
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CopyableUrl label="Complete Redirect URL" url={options.projectData?.completeRedirectId ? `${API_BASE_URL}/api/public/survey/c_${options.projectData.completeRedirectId}?uid=` : undefined} />
+              <CopyableUrl label="Disqualify Redirect URL" url={options.projectData?.disqualifyRedirectId ? `${API_BASE_URL}/api/public/survey/d_${options.projectData.disqualifyRedirectId}?uid=` : undefined} />
+              <CopyableUrl label="Terminate Redirect URL" url={options.projectData?.terminateRedirectId ? `${API_BASE_URL}/api/public/survey/t_${options.projectData.terminateRedirectId}?uid=` : undefined} />
+              <CopyableUrl label="Quota Full Redirect URL" url={options.projectData?.quotaFullRedirectId ? `${API_BASE_URL}/api/public/survey/q_${options.projectData.quotaFullRedirectId}?uid=` : undefined} />
             </div>
           </CardContent>
         </Card>

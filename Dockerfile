@@ -30,8 +30,13 @@ COPY . .
 # defaults below only cover ad-hoc local `docker build` runs.
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
 ARG NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+# Same "baked into the routes manifest at build time" rule as the two above -
+# a docker-compose.yml `environment:` override for this arrives too late
+# (server start, not build), so it must come in via --build-arg / build.args.
+ARG API_INTERNAL_URL=http://localhost:8081
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 

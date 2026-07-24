@@ -169,8 +169,8 @@ export default function ProjectsPage() {
   };
 
   // Fetch projects list
-  const loadProjects = useCallback(async (targetPage = page, targetLimit = limit) => {
-    setLoading(true);
+  const loadProjects = useCallback(async (targetPage = page, targetLimit = limit, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams({
         pageNo: String(targetPage),
@@ -202,9 +202,9 @@ export default function ProjectsPage() {
       }
     } catch (err) {
       console.error("Error loading projects list", err);
-      toast.error("Failed to load projects list");
+      if (!silent) toast.error("Failed to load projects list");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [page, limit, filters]);
 
@@ -226,6 +226,17 @@ export default function ProjectsPage() {
     // render-derived-value anti-pattern this rule targets.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProjects(page, limit);
+  }, [page, limit, loadProjects]);
+
+  // Live hit counts: silently re-fetch the current page every few seconds so
+  // Hits/Complete/Disqualify/etc. reflect new survey activity without the
+  // user needing to manually refresh. "silent" skips the loading spinner and
+  // error toast so this stays invisible unless something actually changes.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadProjects(page, limit, true);
+    }, 5000);
+    return () => clearInterval(interval);
   }, [page, limit, loadProjects]);
 
   const handleSearch = () => {

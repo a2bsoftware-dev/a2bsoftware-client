@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +82,10 @@ interface ProjectDetail {
   startDateFormatted?: string;
   surveyLink: string;
   surveyTestLink: string;
+  completeRedirectId?: string;
+  disqualifyRedirectId?: string;
+  terminateRedirectId?: string;
+  quotaFullRedirectId?: string;
   reqComplete: number | string;
   ir: number | string;
   loi: number | string;
@@ -128,6 +132,44 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// Termination callback URL, one per outcome (SurveyRouterController's
+// /c_{id}, /d_{id}, /t_{id}, /q_{id}) - the client pastes this into their own
+// survey platform's exit-redirect settings so it can report back per-respondent
+// outcomes; auto-generated once at project creation, always the same after that.
+function LinkField({ label, url }: { label: string; url?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast.success(`${label} copied to clipboard`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-1">
+      <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide block">{label}</span>
+      {url ? (
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 break-all">{url}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={copy}
+            className="h-6 w-6 shrink-0 text-zinc-500 hover:text-zinc-950"
+            title={`Copy ${label}`}
+          >
+            {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+          </Button>
+        </div>
+      ) : (
+        <span className="text-sm text-zinc-400">NA</span>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectViewModal({ isOpen, onClose, projectId }: ProjectViewModalProps) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ProjectFormData | null>(null);
@@ -135,33 +177,40 @@ export default function ProjectViewModal({ isOpen, onClose, projectId }: Project
   useEffect(() => {
     if (!isOpen || !projectId) return;
 
-    const load = async () => {
-      setLoading(true);
+    const load = async (silent = false) => {
+      if (!silent) setLoading(true);
       try {
         const res = await apiFetch(`${API_BASE_URL}/api/projects/form-data?id=${projectId}`);
         if (res.ok) {
           const json = await res.json();
           if (json.success) {
             setData(json);
-          } else {
+          } else if (!silent) {
             toast.error("Failed to load project details");
           }
-        } else {
+        } else if (!silent) {
           toast.error("Failed to load project details");
         }
       } catch (err) {
         console.error("Error loading project details", err);
-        toast.error("Error connecting to server");
+        if (!silent) toast.error("Error connecting to server");
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     };
 
     load();
+    // Live hit counts: silently refresh while the modal stays open so the
+    // stats strip reflects new survey activity without closing/reopening it.
+    const interval = setInterval(() => load(true), 5000);
+    return () => clearInterval(interval);
   }, [isOpen, projectId]);
 
   const p = data?.projectData;
   const stats = data?.statistics;
+
+  const redirectUrl = (marker: string, id?: string) =>
+    id ? `${API_BASE_URL}/api/public/survey/${marker}_${id}?uid=` : undefined;
 
   const lookup = <T extends object>(
     list: T[] | undefined,
@@ -236,6 +285,19 @@ export default function ProjectViewModal({ isOpen, onClose, projectId }: Project
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Survey Link" value={p.surveyLink} />
                   <Field label="Survey Test Link" value={p.surveyTestLink} />
+                </div>
+              </div>
+
+              {/* Termination callback URLs */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                  Termination Callback URLs
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <LinkField label="Complete Redirect URL" url={redirectUrl("c", p.completeRedirectId)} />
+                  <LinkField label="Disqualify Redirect URL" url={redirectUrl("d", p.disqualifyRedirectId)} />
+                  <LinkField label="Terminate Redirect URL" url={redirectUrl("t", p.terminateRedirectId)} />
+                  <LinkField label="Quota Full Redirect URL" url={redirectUrl("q", p.quotaFullRedirectId)} />
                 </div>
               </div>
 

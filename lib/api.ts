@@ -19,6 +19,21 @@ interface ApiFetchOptions extends RequestInit {
   trackActivity?: boolean;
 }
 
+// Strips an API_BASE_URL prefix down to a same-origin relative path. Every
+// call site historically built its URL as `${API_BASE_URL}/api/...` (an
+// absolute, cross-port URL) - that bypasses next.config.ts's /api/:path*
+// rewrite entirely (rewrites only intercept requests the browser sends to
+// THIS app's own origin) and forces the browser to attach the auth cookie
+// cross-port, which Incognito's third-party-cookie blocking silently drops.
+// Normalizing here means every existing call site keeps working without
+// having to hunt down and edit each one individually.
+function toSameOriginPath(path: string): string {
+  if (path.startsWith(API_BASE_URL)) {
+    return path.slice(API_BASE_URL.length) || "/";
+  }
+  return path;
+}
+
 // The backend owns all auth/session/token logic. This helper only reacts to
 // HTTP status codes — it never inspects or stores a token itself.
 export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
@@ -27,7 +42,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     markActivity();
   }
 
-  const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
+  const url = toSameOriginPath(path);
   const withCredentials: RequestInit = { ...fetchOptions, credentials: "include" };
 
   const res = await fetch(url, withCredentials);
@@ -35,7 +50,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     return res;
   }
 
-  const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+  const refreshRes = await fetch("/api/auth/refresh", {
     method: "POST",
     credentials: "include",
   });
@@ -51,7 +66,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
 // for idle-logout purposes.
 export async function refreshTokensSilently(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    const res = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
