@@ -2,7 +2,7 @@
 # Atomically (re)writes the production .env from stdin. Called by the
 # deploy workflow like:
 #
-#   ssh deploy@host 'bash /opt/a2bsoftware-frontend/scripts/write-env.sh' <<'ENV_EOF'
+#   ssh deploy@host 'bash /opt/a2bsoftware-client/scripts/write-env.sh' <<'ENV_EOF'
 #   ZAMP_KEY=...
 #   EXIT_HMAC_KEY=...
 #   ENV_EOF

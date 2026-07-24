@@ -90,7 +90,7 @@ interface SupplierDetailRow {
   startDate?: string;
   endDate?: string;
   refId?: string;
-  userId?: string;
+  uid?: string;
   status?: string;
   countryName?: string;
 }
@@ -383,7 +383,7 @@ export default function SuppliersPage() {
       let csvContent = "SN,Project ID,Supplier ID,Supplier Name,Our PO,Client,Start IP,End IP,Start Time,End Time,Start Date,End Date,Ref ID,UID,Status,Country\n";
       detailsList.forEach((row, idx) => {
         const escapeCsv = (str: string | number | null | undefined) => `"${String(str || "").replace(/"/g, '""')}"`;
-        csvContent += `${idx + 1},${row.pid},${row.gid},${escapeCsv(row.vendorName)},${escapeCsv(row.projectName)},${escapeCsv(row.clientName)},${row.startIpAddress},${row.endIpAddress},${row.startTime},${row.endTime},${row.startDate},${row.endDate},${escapeCsv(row.refId)},${escapeCsv(row.userId)},${row.status},${escapeCsv(row.countryName)}\n`;
+        csvContent += `${idx + 1},${row.pid},${row.gid},${escapeCsv(row.vendorName)},${escapeCsv(row.projectName)},${escapeCsv(row.clientName)},${row.startIpAddress},${row.endIpAddress},${row.startTime},${row.endTime},${row.startDate},${row.endDate},${escapeCsv(row.refId)},${escapeCsv(row.uid)},${row.status},${escapeCsv(row.countryName)}\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv" });
@@ -428,10 +428,10 @@ export default function SuppliersPage() {
   // The link vendors actually get sent - hits the Spring Boot backend's public
   // routing gateway directly (SurveyRouterController, /api/public/survey/**),
   // not this frontend. pid/gid are UUIDs so encoding is a no-op today, but the
-  // vendor-appended user_id can contain arbitrary characters, so every part is
+  // vendor-appended uid can contain arbitrary characters, so every part is
   // still run through encodeURIComponent rather than string-concatenated raw.
   const buildSurveyStartUrl = () => {
-    const query = `pid=${encodeURIComponent(project_id)}&gid=${encodeURIComponent(supplierData.vendorId)}&user_id=`;
+    const query = `pid=${encodeURIComponent(project_id)}&gid=${encodeURIComponent(supplierData.vendorId)}&uid=`;
     return `${API_BASE_URL}/api/public/survey/start?${query}`;
   };
 
@@ -822,7 +822,7 @@ export default function SuppliersPage() {
                       </Button>
                     </div>
                     <p className="text-[10px] text-zinc-400">
-                      Give this link to the vendor - they append their own respondent id after <code>user_id=</code>.
+                      Give this link to the vendor - they append their own respondent id after <code>uid=</code>.
                     </p>
                   </div>
                 </div>
@@ -921,7 +921,7 @@ export default function SuppliersPage() {
                           <TableCell className="text-zinc-600 font-mono">{row.startDate} {row.startTime}</TableCell>
                           <TableCell className="text-zinc-600 font-mono">{row.endDate} {row.endTime}</TableCell>
                           <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.refId}>{row.refId}</TableCell>
-                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.userId}>{row.userId}</TableCell>
+                          <TableCell className="text-zinc-500 font-mono max-w-[80px] truncate" title={row.uid}>{row.uid}</TableCell>
                           <TableCell className="text-center">
                             <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${
                               row.status === "Complete"

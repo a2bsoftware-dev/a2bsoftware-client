@@ -31,12 +31,12 @@
 # rsync for that - see docs/DEPLOYMENT.md "First-time VPS setup".
 #
 # Usage:
-#   DOMAIN=dashboard.a2bsoftware.com ./server-setup.sh
+#   DOMAIN=client.a2bsoftware.com ./server-setup.sh
 set -euo pipefail
 
-DOMAIN="${DOMAIN:?set DOMAIN, e.g. DOMAIN=dashboard.a2bsoftware.com}"
+DOMAIN="${DOMAIN:?set DOMAIN, e.g. DOMAIN=client.a2bsoftware.com}"
 DEPLOY_USER="${DEPLOY_USER:-deploy}"
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/a2bsoftware-frontend}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/a2bsoftware-client}"
 SSH_PORT="${SSH_PORT:-22}"
 
 if [[ $EUID -ne 0 ]]; then
@@ -126,13 +126,13 @@ Next steps:
    a2bsoftware-backend on this same domain).
 
 4. Seed this repo's one piece of the shared nginx vhost - the upstream
-   include a2bsoftware-backend's dashboard.a2bsoftware.com.conf `include`s
+   include a2bsoftware-backend's client.a2bsoftware.com.conf `include`s
    (see that repo's nginx config) - BEFORE that repo's nginx is reloaded
    with the include pointed at it, or nginx will fail to start:
      install -d -o ${DEPLOY_USER} -g ${DEPLOY_USER} ${DEPLOY_PATH}/state
      cat > ${DEPLOY_PATH}/state/upstream.conf <<'UPSTREAM_EOF'
-     upstream a2b_frontend {
-       server 127.0.0.1:3000;
+     upstream a2b_client {
+       server 127.0.0.1:5000;
      }
      UPSTREAM_EOF
      chown ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}/state/upstream.conf

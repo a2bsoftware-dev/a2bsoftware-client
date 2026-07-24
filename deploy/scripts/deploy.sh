@@ -12,10 +12,10 @@
 #                              # rollback.sh to redeploy a past image found
 #                              # in state/deploy_history
 #
-# Model: app_blue (127.0.0.1:3000) and app_green (127.0.0.1:3001) are the
+# Model: app_blue (127.0.0.1:5000) and app_green (127.0.0.1:5001) are the
 # same image on two slots. nginx on this box is HOST-native (it also fronts
 # Keycloak and the Spring Boot API on the same vhost - see
-# deploy/nginx/sites-available/dashboard.a2bsoftware.com.conf), so cutover
+# deploy/nginx/sites-available/client.a2bsoftware.com.conf), so cutover
 # means rewriting state/upstream.conf's one `server` line and running
 # `sudo nginx -s reload` (drains existing connections instead of dropping
 # them), NOT touching a container. This script starts the new image on
@@ -102,7 +102,7 @@ CURRENT_SLOT="$(cat "$ACTIVE_SLOT_FILE")"
 if [[ "$CURRENT_SLOT" == "blue" ]]; then NEW_SLOT="green"; else NEW_SLOT="blue"; fi
 NEW_SERVICE="app_${NEW_SLOT}"
 OLD_SERVICE="app_${CURRENT_SLOT}"
-if [[ "$NEW_SLOT" == "blue" ]]; then NEW_PORT=3000; OLD_PORT=3001; else NEW_PORT=3001; OLD_PORT=3000; fi
+if [[ "$NEW_SLOT" == "blue" ]]; then NEW_PORT=5000; OLD_PORT=5001; else NEW_PORT=5001; OLD_PORT=5000; fi
 echo "  current slot: ${CURRENT_SLOT} (127.0.0.1:${OLD_PORT})  ->  deploying to: ${NEW_SLOT} (127.0.0.1:${NEW_PORT})"
 
 # --- Start the new slot (image is already local - loaded above, or was ----
@@ -123,7 +123,7 @@ fi
 cp "$UPSTREAM_FILE" "${UPSTREAM_FILE}.bak"
 cat > "$UPSTREAM_FILE" <<EOF
 # Rewritten by deploy.sh on every deploy - see that file before hand-editing.
-upstream a2b_frontend {
+upstream a2b_client {
   server 127.0.0.1:${NEW_PORT};
 }
 EOF
@@ -163,7 +163,7 @@ if [[ "$PUBLIC_OK" != "true" ]]; then
   echo "✖ Deployment Failed: public health check via nginx/TLS did not pass after cutover." >&2
   echo "✖ Rolling Back: reverting nginx to ${CURRENT_SLOT} (127.0.0.1:${OLD_PORT})." >&2
   cat > "$UPSTREAM_FILE" <<EOF
-upstream a2b_frontend {
+upstream a2b_client {
   server 127.0.0.1:${OLD_PORT};
 }
 EOF

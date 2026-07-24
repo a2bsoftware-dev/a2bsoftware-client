@@ -37,7 +37,7 @@ interface SurveyDetailRow {
   startTime?: string;
   endTime?: string;
   refId?: string;
-  userId?: string;
+  uid?: string;
   loi?: number | string;
   status: string;
   countryName?: string;
@@ -373,7 +373,7 @@ export default function ViewProjectSurveyDetailsPage() {
                         <TableCell className="text-zinc-600 font-mono">{row.startTime}</TableCell>
                         <TableCell className="text-zinc-600 font-mono">{row.endTime}</TableCell>
                         <TableCell className="text-zinc-500 font-mono max-w-[120px] truncate" title={row.refId}>{row.refId}</TableCell>
-                        <TableCell className="text-zinc-500 font-mono max-w-[100px] truncate" title={row.userId}>{row.userId}</TableCell>
+                        <TableCell className="text-zinc-500 font-mono max-w-[100px] truncate" title={row.uid}>{row.uid}</TableCell>
                         <TableCell className="text-center font-mono font-bold text-zinc-700 dark:text-zinc-300">{row.loi}</TableCell>
                         <TableCell className="text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${

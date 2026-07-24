@@ -34,7 +34,7 @@ interface SurveyTransaction {
   start_date?: string;
   end_date?: string;
   ref_id: string;
-  user_id: string;
+  uid: string;
   country_name?: string;
   client_cpi: number | string;
   vendor_cpi: number | string;
@@ -144,8 +144,8 @@ export default function SurveyDetailsModal({
                       <TableCell className="font-mono text-[10px] text-zinc-500 truncate max-w-[120px]" title={row.ref_id}>
                         {row.ref_id}
                       </TableCell>
-                      <TableCell className="font-mono text-[10px] text-zinc-500 truncate max-w-[100px]" title={row.user_id}>
-                        {row.user_id}
+                      <TableCell className="font-mono text-[10px] text-zinc-500 truncate max-w-[100px]" title={row.uid}>
+                        {row.uid}
                       </TableCell>
                       <TableCell className="text-xs">{row.country_name || "NA"}</TableCell>
                       <TableCell className="text-right text-xs font-mono">${clientCpi.toFixed(2)}</TableCell>
