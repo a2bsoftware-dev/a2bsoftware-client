@@ -717,20 +717,6 @@ export default function AddEditProjectPage() {
                   required
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-zinc-500">
-                  Vendor&apos;s Budget (CPI)
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.vendor_cpi}
-                  onChange={(e) => setFormData({ ...formData, vendor_cpi: e.target.value })}
-                  placeholder="Vendor Budget"
-                  className="h-10"
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
