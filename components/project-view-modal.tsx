@@ -61,7 +61,7 @@ interface ProjectStatistics {
   disqualify: number;
   quotaFull: number;
   securityTerm: number;
-  redirect: number;
+  drop: number;
   epc: number;
   ir: number;
   loi: number;
@@ -253,7 +253,7 @@ export default function ProjectViewModal({ isOpen, onClose, projectId }: Project
                     { label: "Disqualified", val: stats.disqualify },
                     { label: "Quota Full", val: stats.quotaFull },
                     { label: "Security Term", val: stats.securityTerm },
-                    { label: "Redirects", val: stats.redirect },
+                    { label: "Drop", val: stats.drop },
                     { label: "EPC", val: `$${Number(stats.epc || 0).toFixed(2)}` },
                     { label: "IR", val: `${stats.ir}%` },
                     { label: "Avg LOI", val: stats.loi },

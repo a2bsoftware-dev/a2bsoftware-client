@@ -64,6 +64,7 @@ interface Project {
   complete?: number;
   disqualify?: number;
   securityTerm?: number;
+  drop?: number;
   abendond?: number;
   ir?: number;
   loi?: number;
@@ -678,7 +679,16 @@ export default function ProjectsPage() {
                           </Button>
                         </TableCell>
 
-                        <TableCell className="text-center font-mono text-zinc-500 text-xs">{project.abendond}%</TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.location.href = `/projects/view-project-survey-details/${project.id}/0`}
+                            className="h-7 px-2 font-mono hover:bg-zinc-100 text-zinc-500"
+                          >
+                            {project.drop}
+                          </Button>
+                        </TableCell>
                         <TableCell className="text-center font-mono font-bold text-zinc-700 dark:text-zinc-300 text-xs">{project.ir}%</TableCell>
                         <TableCell className="text-center font-mono text-zinc-600">{project.loi}</TableCell>
                         

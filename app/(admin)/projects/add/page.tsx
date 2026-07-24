@@ -15,6 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useModulePermission } from "@/hooks/use-module-permission";
 
@@ -57,6 +65,9 @@ interface ProjectOption {
   id: string | number;
   projectName: string;
 }
+
+// Shared {value,label} shape for the searchable country/language/currency dropdowns below.
+type ComboItem = { value: string; label: string };
 
 // Shape of an existing project's current values, returned when editing (project_id present)
 interface ProjectData {
@@ -351,6 +362,15 @@ export default function AddEditProjectPage() {
       router.replace("/projects");
     }
   }, [permissionLoading, permission, requiredAction, router]);
+
+  const countryComboItems: ComboItem[] = options.countries.map((c) => ({ value: c.id, label: c.name }));
+  const selectedCountry = countryComboItems.find((item) => item.value === formData.country_id) ?? null;
+
+  const languageComboItems: ComboItem[] = options.languages.map((l) => ({ value: l.id, label: l.languageName }));
+  const selectedLanguage = languageComboItems.find((item) => item.value === formData.language_id) ?? null;
+
+  const currencyComboItems: ComboItem[] = options.currency.map((cur) => ({ value: cur.id, label: cur.currencyName }));
+  const selectedCurrency = currencyComboItems.find((item) => item.value === formData.currency_id) ?? null;
 
   // Handle device toggling
   const handleDeviceToggle = (val: string) => {
@@ -656,51 +676,75 @@ export default function AddEditProjectPage() {
                 <Label className="text-xs font-semibold text-zinc-500">
                   Countries <span className="text-red-500">*</span>
                 </Label>
-                <NativeSelect
-                  value={formData.country_id}
-                  onChange={(e) => setFormData({ ...formData, country_id: e.target.value })}
-                  className="h-10"
-                  required
+                <Combobox
+                  items={countryComboItems}
+                  value={selectedCountry}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, country_id: (value as ComboItem | null)?.value ?? "" })
+                  }
                 >
-                  <option value="">Select</option>
-                  {options.countries.map((c: CountryOption) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </NativeSelect>
+                  <ComboboxInput placeholder="Search country..." className="h-10 w-full" showClear />
+                  <ComboboxContent>
+                    <ComboboxEmpty>No country found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item: ComboItem) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-zinc-500">
                   Languages <span className="text-red-500">*</span>
                 </Label>
-                <NativeSelect
-                  value={formData.language_id}
-                  onChange={(e) => setFormData({ ...formData, language_id: e.target.value })}
-                  className="h-10"
-                  required
+                <Combobox
+                  items={languageComboItems}
+                  value={selectedLanguage}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, language_id: (value as ComboItem | null)?.value ?? "" })
+                  }
                 >
-                  <option value="">Select</option>
-                  {options.languages.map((l: LanguageOption) => (
-                    <option key={l.id} value={l.id}>{l.languageName}</option>
-                  ))}
-                </NativeSelect>
+                  <ComboboxInput placeholder="Search language..." className="h-10 w-full" showClear />
+                  <ComboboxContent>
+                    <ComboboxEmpty>No language found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item: ComboItem) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-zinc-500">
                   Currency <span className="text-red-500">*</span>
                 </Label>
-                <NativeSelect
-                  value={formData.currency_id}
-                  onChange={(e) => setFormData({ ...formData, currency_id: e.target.value })}
-                  className="h-10"
-                  required
+                <Combobox
+                  items={currencyComboItems}
+                  value={selectedCurrency}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, currency_id: (value as ComboItem | null)?.value ?? "" })
+                  }
                 >
-                  <option value="">Select</option>
-                  {options.currency.map((cur: CurrencyOption) => (
-                    <option key={cur.id} value={cur.id}>{cur.currencyName}</option>
-                  ))}
-                </NativeSelect>
+                  <ComboboxInput placeholder="Search currency..." className="h-10 w-full" showClear />
+                  <ComboboxContent>
+                    <ComboboxEmpty>No currency found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item: ComboItem) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </div>
 
               <div className="space-y-1.5">
