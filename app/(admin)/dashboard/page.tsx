@@ -189,9 +189,9 @@ export default function DashboardPage() {
     }
   }, [calculateDailyStastics]);
 
-  const fetchProjectStatusInit = useCallback(async () => {
+  const fetchProjectStatusInit = useCallback(async (trackActivity = true) => {
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/dashboard/project-status`);
+      const res = await apiFetch(`${API_BASE_URL}/api/dashboard/project-status`, { trackActivity });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.projectStatus) {
@@ -204,9 +204,9 @@ export default function DashboardPage() {
     }
   }, [calculateProjectStatus]);
 
-  const fetchMonthlyStastics = useCallback(async () => {
+  const fetchMonthlyStastics = useCallback(async (trackActivity = true) => {
     try {
-      const res = await apiFetch(`${API_BASE_URL}/api/dashboard/monthly-statistics`);
+      const res = await apiFetch(`${API_BASE_URL}/api/dashboard/monthly-statistics`, { trackActivity });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.monthlyStastics) {
@@ -307,12 +307,16 @@ export default function DashboardPage() {
 
     loadAllData();
 
-    // 60 second interval auto-refresh (matches original AngularJS controller interval).
-    // trackActivity=false: this is a background poll, not something the user did -
+    // Live dashboard: silently re-fetch everything (today's survey info,
+    // project status board, monthly statistics) every few seconds so all of
+    // it reflects new activity without a manual refresh. trackActivity=false
+    // on every call: this is a background poll, not something the user did -
     // it must not keep the idle-logout timer alive on its own.
     const interval = setInterval(() => {
       fetchDashboardInit(false, false);
-    }, 60000);
+      fetchProjectStatusInit(false);
+      fetchMonthlyStastics(false);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [fetchDashboardInit, fetchProjectStatusInit, fetchMonthlyStastics]);
