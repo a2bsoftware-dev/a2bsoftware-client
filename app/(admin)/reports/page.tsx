@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   FileBarChart2,
   Search,
@@ -21,6 +21,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -73,6 +80,40 @@ interface SurveyDetailRow {
   loi: string;
   status: string;
   countryName: string;
+}
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+interface CountryOption {
+  id: string;
+  name: string;
+}
+
+// Last 24 months, newest first, as {value: "yyyy-MM", label: "Jul 2026"} -
+// generated client-side rather than fetched, since "every month that could
+// possibly have data" isn't worth a round trip - the survey-details query
+// itself already comes back empty for a month with nothing in it.
+function buildMonthOptions(): FilterOption[] {
+  const options: FilterOption[] = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    options.push({ value, label });
+  }
+  return options;
+}
+
+function monthBounds(yearMonth: string): { fromDate: string; toDate: string } {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 0);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { fromDate: fmt(from), toDate: fmt(to) };
 }
 
 function statusBadgeClass(status: string) {
@@ -135,6 +176,20 @@ export default function ReportsPage() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [downloading, setDownloading] = useState<"csv" | "xlsx" | null>(null);
 
+  // Filter bar state - "" means "no filter" for every one of these. Month is
+  // just a shortcut that fills fromDate/toDate with that whole calendar
+  // month's bounds; picking a raw date directly clears it back to "" so the
+  // dropdown never shows a stale month label next to a manually-edited range.
+  const [statusOptions, setStatusOptions] = useState<FilterOption[]>([]);
+  const [countryOptions, setCountryOptions] = useState<CountryOption[]>([]);
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterCountryId, setFilterCountryId] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
+  const monthOptions = useMemo(() => buildMonthOptions(), []);
+  const hasActiveFilters = Boolean(filterStatus || filterCountryId || filterFromDate || filterToDate);
+
   const [reconcileDialogOpen, setReconcileDialogOpen] = useState(false);
   const [reconcileUploads, setReconcileUploads] = useState<ReconcileUpload[]>([]);
   const [loadingUploads, setLoadingUploads] = useState(false);
@@ -151,11 +206,115 @@ export default function ReportsPage() {
       .finally(() => setLoadingProjects(false));
   }, []);
 
-  const loadSurveyDetails = useCallback(async (projectId: string, targetPage: number) => {
+  useEffect(() => {
+    apiFetch(`${API_BASE_URL}/api/client/survey-filter-options`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success) {
+          setStatusOptions(data.surveyStatusOptions || []);
+          setCountryOptions(data.countries || []);
+        }
+      })
+      .catch((err) => console.error("Error loading survey filter options", err));
+  }, []);
+
+  const filterQueryParams = useCallback(() => {
+    const params = new URLSearchParams();
+    if (filterStatus) params.set("status", filterStatus);
+    if (filterCountryId) params.set("countryId", filterCountryId);
+    if (filterFromDate) params.set("fromDate", filterFromDate);
+    if (filterToDate) params.set("toDate", filterToDate);
+    return params.toString();
+  }, [filterStatus, filterCountryId, filterFromDate, filterToDate]);
+
+  // Every filter control calls this directly (rather than a useEffect
+  // watching filter state) so the reload reflects the value being set RIGHT
+  // NOW, not whatever the state was before this render - setState is async,
+  // so reading filterStatus/etc. straight after calling their setters here
+  // would still see the OLD value. overrides only replaces what's actually
+  // changing; "" is a valid override (clearing a filter), so this merges with
+  // ?? (nullish-coalescing), never ||.
+  const reloadWithFilters = (overrides: {
+    status?: string;
+    countryId?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) => {
+    if (!selectedProject) return;
+    const merged = {
+      status: overrides.status ?? filterStatus,
+      countryId: overrides.countryId ?? filterCountryId,
+      fromDate: overrides.fromDate ?? filterFromDate,
+      toDate: overrides.toDate ?? filterToDate,
+    };
+    const params = new URLSearchParams();
+    if (merged.status) params.set("status", merged.status);
+    if (merged.countryId) params.set("countryId", merged.countryId);
+    if (merged.fromDate) params.set("fromDate", merged.fromDate);
+    if (merged.toDate) params.set("toDate", merged.toDate);
+    setPage(1);
+    loadSurveyDetails(selectedProject.id, 1, params.toString());
+  };
+
+  const handleStatusFilterChange = (value: string | null) => {
+    const status = value === "all" || !value ? "" : value;
+    setFilterStatus(status);
+    reloadWithFilters({ status });
+  };
+
+  const handleCountryFilterChange = (value: string | null) => {
+    const countryId = value === "all" || !value ? "" : value;
+    setFilterCountryId(countryId);
+    reloadWithFilters({ countryId });
+  };
+
+  const applyMonth = (value: string) => {
+    setFilterMonth(value);
+    if (value === "all" || !value) {
+      setFilterFromDate("");
+      setFilterToDate("");
+      reloadWithFilters({ fromDate: "", toDate: "" });
+    } else {
+      const { fromDate, toDate } = monthBounds(value);
+      setFilterFromDate(fromDate);
+      setFilterToDate(toDate);
+      reloadWithFilters({ fromDate, toDate });
+    }
+  };
+
+  const handleFromDateChange = (value: string) => {
+    setFilterFromDate(value);
+    setFilterMonth("");
+    reloadWithFilters({ fromDate: value });
+  };
+
+  const handleToDateChange = (value: string) => {
+    setFilterToDate(value);
+    setFilterMonth("");
+    reloadWithFilters({ toDate: value });
+  };
+
+  const clearFilters = () => {
+    setFilterStatus("");
+    setFilterCountryId("");
+    setFilterMonth("");
+    setFilterFromDate("");
+    setFilterToDate("");
+    reloadWithFilters({ status: "", countryId: "", fromDate: "", toDate: "" });
+  };
+
+  // extraOverride lets a filter-change handler pass the query string for the
+  // value it's setting RIGHT NOW (see reloadWithFilters above) instead of
+  // this reading current-render filter state, which would still be stale the
+  // instant a setState call above it hasn't flushed yet. Pagination
+  // (goToPage) omits it and falls back to filterQueryParams() - by then
+  // state has long since settled, so reading it fresh is fine.
+  const loadSurveyDetails = useCallback(async (projectId: string, targetPage: number, extraOverride?: string) => {
     setLoadingRows(true);
     try {
+      const extra = extraOverride !== undefined ? extraOverride : filterQueryParams();
       const res = await apiFetch(
-        `${API_BASE_URL}/api/client/projects/${projectId}/survey-details?pageNo=${targetPage}&maxPerPage=${PAGE_SIZE}`
+        `${API_BASE_URL}/api/client/projects/${projectId}/survey-details?pageNo=${targetPage}&maxPerPage=${PAGE_SIZE}${extra ? `&${extra}` : ""}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -174,7 +333,7 @@ export default function ReportsPage() {
     } finally {
       setLoadingRows(false);
     }
-  }, []);
+  }, [filterQueryParams]);
 
   const selectProject = (project: ProjectOption) => {
     setSelectedProject(project);
@@ -195,8 +354,9 @@ export default function ReportsPage() {
     }
     setDownloading(format);
     try {
+      const extra = filterQueryParams();
       const res = await apiFetch(
-        `${API_BASE_URL}/api/client/projects/${selectedProject.id}/survey-details/export?format=${format}`
+        `${API_BASE_URL}/api/client/projects/${selectedProject.id}/survey-details/export?format=${format}${extra ? `&${extra}` : ""}`
       );
       if (!res.ok) {
         toast.error("Failed to download report");
@@ -381,6 +541,69 @@ export default function ReportsPage() {
               </div>
             )}
           </CardHeader>
+          {selectedProject && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+              <Select value={filterStatus || "all"} onValueChange={(v) => handleStatusFilterChange(v)}>
+                <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by status">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statusOptions.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterCountryId || "all"} onValueChange={(v) => handleCountryFilterChange(v)}>
+                <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filter by country">
+                  <SelectValue placeholder="All Countries" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Countries</SelectItem>
+                  {countryOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterMonth || "all"} onValueChange={(v) => applyMonth(v ?? "all")}>
+                <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by month">
+                  <SelectValue placeholder="All Months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="date"
+                  value={filterFromDate}
+                  onChange={(e) => handleFromDateChange(e.target.value)}
+                  className="h-8 w-[135px] text-xs"
+                  aria-label="From date"
+                />
+                <span className="text-xs text-zinc-400">to</span>
+                <Input
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => handleToDateChange(e.target.value)}
+                  className="h-8 w-[135px] text-xs"
+                  aria-label="To date"
+                />
+              </div>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-zinc-500" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          )}
           <CardContent className="pt-4">
             {!selectedProject ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
