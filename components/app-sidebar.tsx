@@ -13,6 +13,7 @@ import {
   KeyRound,
   Link2,
   FileCode,
+  FileBarChart2,
   ShieldAlert,
   Settings,
   LogOut,
@@ -88,6 +89,7 @@ export function AppSidebar({
   const navItems: NavItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, visible: hasAccess(1) },
     { name: "Projects", href: "/projects", icon: FolderKanban, visible: hasAccess(6) },
+    { name: "Reports", href: "/reports", icon: FileBarChart2, visible: hasAccess(6) },
     { name: "Users", href: "/users", icon: Users, visible: hasAccess(10) },
     {
       name: "Clients",
