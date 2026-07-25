@@ -607,7 +607,11 @@ export default function DashboardPage() {
 
       {/* Filter bar - every graph below responds to these together */}
       <div className="flex flex-wrap items-center gap-2 pb-1">
-        <Select value={filterStatus || "all"} onValueChange={(v) => handleStatusFilterChange(v)}>
+        <Select
+          items={[{ value: "all", label: "All Statuses" }, ...statusOptions]}
+          value={filterStatus || "all"}
+          onValueChange={(v) => handleStatusFilterChange(v)}
+        >
           <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by status">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -619,7 +623,11 @@ export default function DashboardPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterCountryId || "all"} onValueChange={(v) => handleCountryFilterChange(v)}>
+        <Select
+          items={[{ value: "all", label: "All Countries" }, ...countryOptions.map((c) => ({ value: c.id, label: c.name }))]}
+          value={filterCountryId || "all"}
+          onValueChange={(v) => handleCountryFilterChange(v)}
+        >
           <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filter by country">
             <SelectValue placeholder="All Countries" />
           </SelectTrigger>
@@ -631,7 +639,11 @@ export default function DashboardPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterMonth || "all"} onValueChange={(v) => applyMonth(v ?? "all")}>
+        <Select
+          items={[{ value: "all", label: "All Months" }, ...monthOptions]}
+          value={filterMonth || "all"}
+          onValueChange={(v) => applyMonth(v ?? "all")}
+        >
           <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by month">
             <SelectValue placeholder="All Months" />
           </SelectTrigger>

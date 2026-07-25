@@ -167,8 +167,8 @@ export default function ReportsPage() {
   const [projectSearch, setProjectSearch] = useState("");
   const [loadingProjects, setLoadingProjects] = useState(true);
 
-  // No project selected by default - the right pane starts empty rather
-  // than auto-picking the first project in the list.
+  // null means "All Projects" - the default, always-loaded view, not
+  // "nothing selected yet".
   const [selectedProject, setSelectedProject] = useState<ProjectOption | null>(null);
   const [rows, setRows] = useState<SurveyDetailRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -240,7 +240,6 @@ export default function ReportsPage() {
     fromDate?: string;
     toDate?: string;
   }) => {
-    if (!selectedProject) return;
     const merged = {
       status: overrides.status ?? filterStatus,
       countryId: overrides.countryId ?? filterCountryId,
@@ -253,7 +252,7 @@ export default function ReportsPage() {
     if (merged.fromDate) params.set("fromDate", merged.fromDate);
     if (merged.toDate) params.set("toDate", merged.toDate);
     setPage(1);
-    loadSurveyDetails(selectedProject.id, 1, params.toString());
+    loadSurveyDetails(selectedProject?.id, 1, params.toString());
   };
 
   const handleStatusFilterChange = (value: string | null) => {
@@ -309,12 +308,13 @@ export default function ReportsPage() {
   // instant a setState call above it hasn't flushed yet. Pagination
   // (goToPage) omits it and falls back to filterQueryParams() - by then
   // state has long since settled, so reading it fresh is fine.
-  const loadSurveyDetails = useCallback(async (projectId: string, targetPage: number, extraOverride?: string) => {
+  const loadSurveyDetails = useCallback(async (projectId: string | undefined, targetPage: number, extraOverride?: string) => {
     setLoadingRows(true);
     try {
       const extra = extraOverride !== undefined ? extraOverride : filterQueryParams();
+      const projectParam = projectId ? `&projectId=${projectId}` : "";
       const res = await apiFetch(
-        `${API_BASE_URL}/api/client/projects/${projectId}/survey-details?pageNo=${targetPage}&maxPerPage=${PAGE_SIZE}${extra ? `&${extra}` : ""}`
+        `${API_BASE_URL}/api/client/survey-details?pageNo=${targetPage}&maxPerPage=${PAGE_SIZE}${projectParam}${extra ? `&${extra}` : ""}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -335,28 +335,34 @@ export default function ReportsPage() {
     }
   }, [filterQueryParams]);
 
-  const selectProject = (project: ProjectOption) => {
+  // Runs once on mount to load the default "All Projects" view immediately -
+  // deliberately NOT depending on loadSurveyDetails (which changes identity
+  // whenever a filter changes), since re-running this on every filter change
+  // would incorrectly reset the query back to "all projects", racing against
+  // whatever project/filter the user has since selected.
+  useEffect(() => {
+    loadSurveyDetails(undefined, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectProject = (project: ProjectOption | null) => {
     setSelectedProject(project);
     setPage(1);
-    loadSurveyDetails(project.id, 1);
+    loadSurveyDetails(project?.id, 1);
   };
 
   const goToPage = (targetPage: number) => {
-    if (!selectedProject) return;
     setPage(targetPage);
-    loadSurveyDetails(selectedProject.id, targetPage);
+    loadSurveyDetails(selectedProject?.id, targetPage);
   };
 
   const handleDownload = async (format: "csv" | "xlsx") => {
-    if (!selectedProject) {
-      toast.error("Please select a project first");
-      return;
-    }
     setDownloading(format);
     try {
       const extra = filterQueryParams();
+      const projectParam = selectedProject ? `&projectId=${selectedProject.id}` : "";
       const res = await apiFetch(
-        `${API_BASE_URL}/api/client/projects/${selectedProject.id}/survey-details/export?format=${format}${extra ? `&${extra}` : ""}`
+        `${API_BASE_URL}/api/client/survey-details/export?format=${format}${projectParam}${extra ? `&${extra}` : ""}`
       );
       if (!res.ok) {
         toast.error("Failed to download report");
@@ -366,7 +372,7 @@ export default function ReportsPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `survey_details_${selectedProject.projectName.replace(/[^a-zA-Z0-9_-]+/g, "_")}.${format}`;
+      a.download = `survey_details_${selectedProject ? selectedProject.projectName.replace(/[^a-zA-Z0-9_-]+/g, "_") : "all_projects"}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -456,7 +462,7 @@ export default function ReportsPage() {
           Reports
         </h1>
         <p className="text-xs text-zinc-500 mt-0.5">
-          Select a project to view its survey activity and download a CSV or Excel report.
+          Browse survey activity across all projects, or select one on the left, and download a CSV or Excel report.
         </p>
       </div>
 
@@ -475,6 +481,16 @@ export default function ReportsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0 max-h-[65vh] overflow-y-auto">
+            <button
+              onClick={() => selectProject(null)}
+              className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors border-b border-zinc-100 dark:border-zinc-800 ${
+                selectedProject === null
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
+                  : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/50"
+              }`}
+            >
+              All Projects
+            </button>
             {loadingProjects ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
@@ -505,10 +521,10 @@ export default function ReportsPage() {
         <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
           <CardHeader className="py-3 border-b border-zinc-100 dark:border-zinc-800 flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-              {selectedProject ? selectedProject.projectName : "Select a project"}
+              {selectedProject ? selectedProject.projectName : "All Projects"}
             </CardTitle>
-            {selectedProject && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {selectedProject && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -518,104 +534,112 @@ export default function ReportsPage() {
                   <UploadCloud size={13} />
                   <span>Reconcile</span>
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={downloading !== null}
-                        className="h-8 flex items-center gap-1.5"
-                      />
-                    }
-                  >
-                    {downloading !== null ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                    <span>Download</span>
-                    <ChevronDown size={13} />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleDownload("csv")}>CSV</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDownload("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </CardHeader>
-          {selectedProject && (
-            <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
-              <Select value={filterStatus || "all"} onValueChange={(v) => handleStatusFilterChange(v)}>
-                <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by status">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {statusOptions.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterCountryId || "all"} onValueChange={(v) => handleCountryFilterChange(v)}>
-                <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filter by country">
-                  <SelectValue placeholder="All Countries" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Countries</SelectItem>
-                  {countryOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterMonth || "all"} onValueChange={(v) => applyMonth(v ?? "all")}>
-                <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by month">
-                  <SelectValue placeholder="All Months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {monthOptions.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="date"
-                  value={filterFromDate}
-                  onChange={(e) => handleFromDateChange(e.target.value)}
-                  className="h-8 w-[135px] text-xs"
-                  aria-label="From date"
-                />
-                <span className="text-xs text-zinc-400">to</span>
-                <Input
-                  type="date"
-                  value={filterToDate}
-                  onChange={(e) => handleToDateChange(e.target.value)}
-                  className="h-8 w-[135px] text-xs"
-                  aria-label="To date"
-                />
-              </div>
-
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-zinc-500" onClick={clearFilters}>
-                  Clear filters
-                </Button>
               )}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={downloading !== null}
+                      className="h-8 flex items-center gap-1.5"
+                    />
+                  }
+                >
+                  {downloading !== null ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  <span>Download</span>
+                  <ChevronDown size={13} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleDownload("csv")}>CSV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDownload("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
+          </CardHeader>
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+            <Select
+              items={[{ value: "all", label: "All Statuses" }, ...statusOptions]}
+              value={filterStatus || "all"}
+              onValueChange={(v) => handleStatusFilterChange(v)}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by status">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {statusOptions.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={[{ value: "all", label: "All Countries" }, ...countryOptions.map((c) => ({ value: c.id, label: c.name }))]}
+              value={filterCountryId || "all"}
+              onValueChange={(v) => handleCountryFilterChange(v)}
+            >
+              <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Filter by country">
+                <SelectValue placeholder="All Countries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Countries</SelectItem>
+                {countryOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={[{ value: "all", label: "All Months" }, ...monthOptions]}
+              value={filterMonth || "all"}
+              onValueChange={(v) => applyMonth(v ?? "all")}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Filter by month">
+                <SelectValue placeholder="All Months" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Months</SelectItem>
+                {monthOptions.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                value={filterFromDate}
+                onChange={(e) => handleFromDateChange(e.target.value)}
+                className="h-8 w-[135px] text-xs"
+                aria-label="From date"
+              />
+              <span className="text-xs text-zinc-400">to</span>
+              <Input
+                type="date"
+                value={filterToDate}
+                onChange={(e) => handleToDateChange(e.target.value)}
+                className="h-8 w-[135px] text-xs"
+                aria-label="To date"
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-zinc-500" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
           <CardContent className="pt-4">
-            {!selectedProject ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <span className="text-sm text-zinc-400">Select a project on the left to view its surveys.</span>
-              </div>
-            ) : loadingRows ? (
+            {loadingRows ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
               </div>
             ) : rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <span className="text-sm text-zinc-400">No survey activity recorded for this project yet.</span>
+                <span className="text-sm text-zinc-400">
+                  {selectedProject ? "No survey activity recorded for this project yet." : "No survey activity recorded yet."}
+                </span>
               </div>
             ) : (
               <>
@@ -624,6 +648,7 @@ export default function ReportsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-xs">#</TableHead>
+                        {!selectedProject && <TableHead className="text-xs">Project</TableHead>}
                         <TableHead className="text-xs">Start IP</TableHead>
                         <TableHead className="text-xs">End IP</TableHead>
                         <TableHead className="text-xs">Start Time</TableHead>
@@ -639,6 +664,9 @@ export default function ReportsPage() {
                       {rows.map((row, idx) => (
                         <TableRow key={row.id}>
                           <TableCell className="text-zinc-500 text-xs">{(page - 1) * PAGE_SIZE + idx + 1}</TableCell>
+                          {!selectedProject && (
+                            <TableCell className="text-xs max-w-[160px] truncate" title={row.projectName}>{row.projectName}</TableCell>
+                          )}
                           <TableCell className="font-mono text-xs text-zinc-500">{row.startIpAddress}</TableCell>
                           <TableCell className="font-mono text-xs text-zinc-500">{row.endIpAddress}</TableCell>
                           <TableCell className="font-mono text-xs text-zinc-600">{row.startDate} {row.startTime}</TableCell>
