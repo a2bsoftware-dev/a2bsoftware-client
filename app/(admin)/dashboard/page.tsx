@@ -61,6 +61,9 @@ interface MonthlyStatisticItem {
 
 // Groups raw monthlyStastics rows (one per survey attempt) into one row per
 // calendar day, counted by status - the shape MonthlyTrendAreaChart expects.
+// Reconcile (status 5): a Drop hit later proven legitimate via an approved
+// client reconciliation file - flipped server-side from status 0 to 5, so it
+// gets its own explicit case rather than falling into the Drop default.
 function buildDailyTrend(rows: MonthlyStatisticItem[]): DailyTrendRow[] {
   const byDay = new Map<string, DailyTrendRow>();
   for (const row of rows) {
@@ -68,7 +71,7 @@ function buildDailyTrend(rows: MonthlyStatisticItem[]): DailyTrendRow[] {
     const day = row.start_time.slice(0, 10);
     let entry = byDay.get(day);
     if (!entry) {
-      entry = { day, complete: 0, disqualify: 0, quotaFull: 0, securityTerm: 0, drop: 0 };
+      entry = { day, complete: 0, disqualify: 0, quotaFull: 0, securityTerm: 0, drop: 0, reconcile: 0 };
       byDay.set(day, entry);
     }
     switch (row.status) {
@@ -76,6 +79,7 @@ function buildDailyTrend(rows: MonthlyStatisticItem[]): DailyTrendRow[] {
       case 2: entry.disqualify++; break;
       case 3: entry.quotaFull++; break;
       case 4: entry.securityTerm++; break;
+      case 5: entry.reconcile++; break;
       default: entry.drop++; break;
     }
   }
@@ -106,6 +110,7 @@ export default function DashboardPage() {
   const [quotaFulls, setQuotaFulls] = useState<SurveyInformationItem[]>([]);
   const [securityTerms, setSecurityTerms] = useState<SurveyInformationItem[]>([]);
   const [drops, setDrops] = useState<SurveyInformationItem[]>([]);
+  const [reconciles, setReconciles] = useState<SurveyInformationItem[]>([]);
 
   const [biddings, setBiddings] = useState<ProjectStatusItem[]>([]);
   const [testings, setTestings] = useState<ProjectStatusItem[]>([]);
@@ -124,6 +129,7 @@ export default function DashboardPage() {
     const qf: SurveyInformationItem[] = [];
     const st: SurveyInformationItem[] = [];
     const dr: SurveyInformationItem[] = [];
+    const rc: SurveyInformationItem[] = [];
 
     data.forEach((item) => {
       if (item.status === 0) dr.push(item);
@@ -131,6 +137,7 @@ export default function DashboardPage() {
       else if (item.status === 2) dq.push(item);
       else if (item.status === 3) qf.push(item);
       else if (item.status === 4) st.push(item);
+      else if (item.status === 5) rc.push(item);
     });
 
     setComplets(c);
@@ -138,6 +145,7 @@ export default function DashboardPage() {
     setQuotaFulls(qf);
     setSecurityTerms(st);
     setDrops(dr);
+    setReconciles(rc);
   }, []);
 
   // Grouping calculations (projects status)
@@ -237,6 +245,9 @@ export default function DashboardPage() {
     } else if (type === 0) {
       setSurveyModalTitle("Drop");
       setSurveyModalData(drops);
+    } else if (type === 5) {
+      setSurveyModalTitle("Reconcile");
+      setSurveyModalData(reconciles);
     }
     setSurveyModalOpen(true);
   };
@@ -387,9 +398,10 @@ export default function DashboardPage() {
             quotaFull={quotaFulls.length}
             securityTerm={securityTerms.length}
             drop={drops.length}
+            reconcile={reconciles.length}
             onSliceClick={(key) =>
               handleShowDailyFullDetails(
-                key === "completed" ? 1 : key === "disqualify" ? 2 : key === "quotaFull" ? 3 : key === "securityTerm" ? 4 : 0
+                key === "completed" ? 1 : key === "disqualify" ? 2 : key === "quotaFull" ? 3 : key === "securityTerm" ? 4 : key === "reconcile" ? 5 : 0
               )
             }
           />
@@ -419,6 +431,7 @@ export default function DashboardPage() {
             quotaFull={quotaFulls.length}
             securityTerm={securityTerms.length}
             drop={drops.length}
+            reconcile={reconciles.length}
           />
         </div>
       </section>

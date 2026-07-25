@@ -65,6 +65,7 @@ interface Project {
   disqualify?: number;
   securityTerm?: number;
   drop?: number;
+  reconcile?: number;
   abendond?: number;
   ir?: number;
   loi?: number;
@@ -560,6 +561,7 @@ export default function ProjectsPage() {
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Disqualify</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Security Term</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Drop</TableHead>
+                    <TableHead className="font-semibold text-zinc-600 h-10 text-center">Reconcile</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">IR</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">LOI</TableHead>
                     <TableHead className="font-semibold text-zinc-600 h-10 text-center">Status</TableHead>
@@ -687,6 +689,17 @@ export default function ProjectsPage() {
                             className="h-7 px-2 font-mono hover:bg-zinc-100 text-zinc-500"
                           >
                             {project.drop}
+                          </Button>
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.location.href = `/projects/view-project-survey-details/${project.id}/5`}
+                            className="h-7 px-2 font-mono hover:bg-zinc-100 text-zinc-500"
+                          >
+                            {project.reconcile}
                           </Button>
                         </TableCell>
                         <TableCell className="text-center font-mono font-bold text-zinc-700 dark:text-zinc-300 text-xs">{project.ir}%</TableCell>

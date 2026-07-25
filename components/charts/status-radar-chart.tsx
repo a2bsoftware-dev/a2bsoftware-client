@@ -10,6 +10,7 @@ interface StatusRadarChartProps {
   quotaFull: number;
   securityTerm: number;
   drop: number;
+  reconcile: number;
 }
 
 const chartConfig = {
@@ -22,6 +23,7 @@ export default function StatusRadarChart({
   quotaFull,
   securityTerm,
   drop,
+  reconcile,
 }: StatusRadarChartProps) {
   const data = [
     { status: "Completed", value: completed },
@@ -29,6 +31,7 @@ export default function StatusRadarChart({
     { status: "Quota Full", value: quotaFull },
     { status: "Security Term", value: securityTerm },
     { status: "Drop", value: drop },
+    { status: "Reconcile", value: reconcile },
   ];
 
   return (

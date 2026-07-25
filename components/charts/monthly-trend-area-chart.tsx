@@ -20,6 +20,7 @@ export interface DailyTrendRow {
   quotaFull: number;
   securityTerm: number;
   drop: number;
+  reconcile: number;
 }
 
 const chartConfig = {
@@ -28,6 +29,7 @@ const chartConfig = {
   quotaFull: { label: "Quota Full", color: "var(--chart-3)" },
   securityTerm: { label: "Security Term", color: "var(--chart-4)" },
   drop: { label: "Drop", color: "var(--chart-5)" },
+  reconcile: { label: "Reconcile", color: "var(--chart-6)" },
 } satisfies ChartConfig;
 
 export default function MonthlyTrendAreaChart({ data }: { data: DailyTrendRow[] }) {
@@ -95,6 +97,14 @@ export default function MonthlyTrendAreaChart({ data }: { data: DailyTrendRow[] 
                 stackId="1"
                 stroke="var(--color-drop)"
                 fill="var(--color-drop)"
+                fillOpacity={0.4}
+              />
+              <Area
+                type="monotone"
+                dataKey="reconcile"
+                stackId="1"
+                stroke="var(--color-reconcile)"
+                fill="var(--color-reconcile)"
                 fillOpacity={0.4}
               />
             </AreaChart>

@@ -1,10 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FileBarChart2, Search, Loader2, Download, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  FileBarChart2,
+  Search,
+  Loader2,
+  Download,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  UploadCloud,
+  FileSpreadsheet,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -62,8 +85,37 @@ function statusBadgeClass(status: string) {
       return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400";
     case "securityTerm":
       return "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400";
+    case "Reconcile":
+      return "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/20 dark:text-violet-400";
     default:
       return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400";
+  }
+}
+
+// A client-uploaded reconciliation file - see ReconcileUploadDto on the
+// backend. Nothing here changes any survey status automatically: an admin on
+// the main frontend reviews the file and only their explicit approval flips
+// matching rows to Reconcile (see ReconcileService.approve).
+interface ReconcileUpload {
+  id: string;
+  fileName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  uploadedAt: string;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+  totalRows: number | null;
+  matchedRows: number | null;
+  rejectionReason: string | null;
+}
+
+function reconcileStatusBadgeClass(status: string) {
+  switch (status) {
+    case "APPROVED":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400";
+    case "REJECTED":
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400";
+    default:
+      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400";
   }
 }
 
@@ -82,6 +134,12 @@ export default function ReportsPage() {
   const [page, setPage] = useState(1);
   const [loadingRows, setLoadingRows] = useState(false);
   const [downloading, setDownloading] = useState<"csv" | "xlsx" | null>(null);
+
+  const [reconcileDialogOpen, setReconcileDialogOpen] = useState(false);
+  const [reconcileUploads, setReconcileUploads] = useState<ReconcileUpload[]>([]);
+  const [loadingUploads, setLoadingUploads] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     apiFetch(`${API_BASE_URL}/api/client/projects`)
@@ -162,6 +220,61 @@ export default function ReportsPage() {
     }
   };
 
+  const loadReconcileUploads = useCallback(async (projectId: string) => {
+    setLoadingUploads(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/client/projects/${projectId}/reconcile-uploads`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setReconcileUploads(data.uploads || []);
+      }
+    } catch (err) {
+      console.error("Error loading reconcile uploads", err);
+    } finally {
+      setLoadingUploads(false);
+    }
+  }, []);
+
+  const openReconcileDialog = () => {
+    if (!selectedProject) return;
+    setReconcileDialogOpen(true);
+    loadReconcileUploads(selectedProject.id);
+  };
+
+  const handleFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !selectedProject) return;
+
+    const isCsvOrXlsx = /\.(csv|xlsx)$/i.test(file.name);
+    if (!isCsvOrXlsx) {
+      toast.error("Only .csv and .xlsx files are accepted");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiFetch(`${API_BASE_URL}/api/client/projects/${selectedProject.id}/reconcile-uploads`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        toast.success("File uploaded - awaiting admin review");
+        loadReconcileUploads(selectedProject.id);
+      } else {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.message || "Failed to upload file");
+      }
+    } catch (err) {
+      console.error("Error uploading reconcile file", err);
+      toast.error("Error connecting to server");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const filteredProjects = projects.filter((p) =>
     p.projectName.toLowerCase().includes(projectSearch.toLowerCase())
   );
@@ -239,23 +352,32 @@ export default function ReportsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDownload("csv")}
-                  disabled={downloading !== null}
+                  onClick={openReconcileDialog}
                   className="h-8 flex items-center gap-1.5"
                 >
-                  {downloading === "csv" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  <span>CSV</span>
+                  <UploadCloud size={13} />
+                  <span>Reconcile</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownload("xlsx")}
-                  disabled={downloading !== null}
-                  className="h-8 flex items-center gap-1.5"
-                >
-                  {downloading === "xlsx" ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />}
-                  <span>Excel</span>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={downloading !== null}
+                        className="h-8 flex items-center gap-1.5"
+                      />
+                    }
+                  >
+                    {downloading !== null ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                    <span>Download</span>
+                    <ChevronDown size={13} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleDownload("csv")}>CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownload("xlsx")}>Excel (.xlsx)</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </CardHeader>
@@ -343,6 +465,77 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={reconcileDialogOpen} onOpenChange={setReconcileDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reconcile{selectedProject ? ` — ${selectedProject.projectName}` : ""}</DialogTitle>
+            <DialogDescription>
+              Upload a CSV or Excel file listing the UIDs you want reconciled. An admin will review it
+              and, once approved, matching entries will show as Reconcile across all dashboards.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx"
+              className="hidden"
+              onChange={handleFileSelected}
+            />
+            <Button
+              variant="outline"
+              className="w-full flex items-center gap-2"
+              disabled={uploadingFile}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadingFile ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+              <span>{uploadingFile ? "Uploading..." : "Choose a .csv or .xlsx file to upload"}</span>
+            </Button>
+
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Past uploads</span>
+              {loadingUploads ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+                </div>
+              ) : reconcileUploads.length === 0 ? (
+                <div className="py-6 text-center text-xs text-zinc-400">No reconcile files uploaded yet.</div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {reconcileUploads.map((u) => (
+                    <div
+                      key={u.id}
+                      className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate" title={u.fileName}>
+                          {u.fileName}
+                        </span>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${reconcileStatusBadgeClass(u.status)}`}>
+                          {u.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-zinc-400">
+                        Uploaded {new Date(u.uploadedAt).toLocaleString()}
+                      </div>
+                      {u.status === "APPROVED" && (
+                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                          {u.matchedRows} of {u.totalRows} UIDs matched and reconciled
+                        </div>
+                      )}
+                      {u.status === "REJECTED" && u.rejectionReason && (
+                        <div className="text-[11px] text-red-600 dark:text-red-400">Reason: {u.rejectionReason}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart";
 
-type StatusKey = "completed" | "disqualify" | "quotaFull" | "securityTerm" | "drop";
+type StatusKey = "completed" | "disqualify" | "quotaFull" | "securityTerm" | "drop" | "reconcile";
 
 interface TodayStatusPieChartProps {
   completed: number;
@@ -19,6 +19,7 @@ interface TodayStatusPieChartProps {
   quotaFull: number;
   securityTerm: number;
   drop: number;
+  reconcile: number;
   onSliceClick?: (key: StatusKey) => void;
 }
 
@@ -28,6 +29,7 @@ const chartConfig = {
   quotaFull: { label: "Quota Full", color: "var(--chart-3)" },
   securityTerm: { label: "Security Term", color: "var(--chart-4)" },
   drop: { label: "Drop", color: "var(--chart-5)" },
+  reconcile: { label: "Reconcile", color: "var(--chart-6)" },
 } satisfies ChartConfig;
 
 export default function TodayStatusPieChart({
@@ -36,6 +38,7 @@ export default function TodayStatusPieChart({
   quotaFull,
   securityTerm,
   drop,
+  reconcile,
   onSliceClick,
 }: TodayStatusPieChartProps) {
   const data = (
@@ -45,6 +48,7 @@ export default function TodayStatusPieChart({
       { key: "quotaFull", value: quotaFull, fill: "var(--color-quotaFull)" },
       { key: "securityTerm", value: securityTerm, fill: "var(--color-securityTerm)" },
       { key: "drop", value: drop, fill: "var(--color-drop)" },
+      { key: "reconcile", value: reconcile, fill: "var(--color-reconcile)" },
     ] as const satisfies readonly { key: StatusKey; value: number; fill: string }[]
   ).filter((d) => d.value > 0);
 
