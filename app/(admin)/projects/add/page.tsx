@@ -764,7 +764,7 @@ export default function AddEditProjectPage() {
                     setFormData({
                       ...formData,
                       cpc,
-                      vendor_cpi: Number.isFinite(parsed) ? (parsed * 0.3).toFixed(2) : "",
+                      vendor_cpi: Number.isFinite(parsed) ? (parsed * 0.7).toFixed(2) : "",
                     });
                   }}
                   placeholder="CPI"
@@ -783,7 +783,7 @@ export default function AddEditProjectPage() {
                     step="0.01"
                     value={formData.vendor_cpi}
                     onChange={(e) => setFormData({ ...formData, vendor_cpi: e.target.value })}
-                    placeholder="Auto-calculated as 30% of Client CPI"
+                    placeholder="Auto-calculated as 70% of Client CPI"
                     className="h-10"
                   />
                 </div>
