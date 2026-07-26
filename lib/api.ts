@@ -1,3 +1,5 @@
+import { reportApiError } from "./api-error-store";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8081";
 
 // Idle-logout tracking: updated whenever the user's own actions cause a real
@@ -34,6 +36,36 @@ function toSameOriginPath(path: string): string {
   return path;
 }
 
+// Reports a non-ok response to the global error-modal store. Reads the body
+// via res.clone() so the call site's own res.json()/res.text() still works -
+// a Response body can only be consumed once.
+async function reportIfError(res: Response, method: string, url: string): Promise<void> {
+  if (res.ok) return;
+
+  let bodyText = "";
+  try {
+    bodyText = await res.clone().text();
+  } catch {
+    // no readable body
+  }
+
+  let title = res.statusText || "Request failed";
+  try {
+    const data = JSON.parse(bodyText);
+    if (typeof data?.error === "string" && data.error) title = data.error;
+  } catch {
+    // body wasn't JSON - keep statusText as the title
+  }
+
+  reportApiError({
+    code: res.status,
+    title,
+    method,
+    url,
+    detail: bodyText || undefined,
+  });
+}
+
 // The backend owns all auth/session/token logic. This helper only reacts to
 // HTTP status codes — it never inspects or stores a token itself.
 export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
@@ -43,10 +75,25 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   }
 
   const url = toSameOriginPath(path);
+  const method = (fetchOptions.method || "GET").toString().toUpperCase();
   const withCredentials: RequestInit = { ...fetchOptions, credentials: "include" };
 
-  const res = await fetch(url, withCredentials);
+  let res: Response;
+  try {
+    res = await fetch(url, withCredentials);
+  } catch (err) {
+    reportApiError({
+      code: "NETWORK_ERROR",
+      title: err instanceof Error ? err.message : "Network request failed",
+      method,
+      url,
+      detail: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
+
   if (res.status !== 401) {
+    await reportIfError(res, method, url);
     return res;
   }
 
@@ -55,10 +102,13 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     credentials: "include",
   });
   if (!refreshRes.ok) {
+    await reportIfError(res, method, url);
     return res;
   }
 
-  return fetch(url, withCredentials);
+  const retryRes = await fetch(url, withCredentials);
+  await reportIfError(retryRes, method, url);
+  return retryRes;
 }
 
 // Proactive keep-alive ping on a fixed timer, independent of user activity -

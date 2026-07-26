@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ApiErrorModal } from "@/components/api-error-modal";
 import "./globals.css";
 
 const montserrat = localFont({
@@ -51,6 +52,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <ApiErrorModal />
         </ThemeProvider>
       </body>
     </html>
