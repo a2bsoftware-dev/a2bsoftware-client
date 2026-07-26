@@ -187,7 +187,10 @@ export default function AddEditProjectPage() {
   const idParam = params?.id;
   const project_id: string | null = Array.isArray(idParam) ? idParam[0] : (idParam || null);
   const requiredAction = project_id ? "update" : "create";
-  const { permission, loading: permissionLoading } = useModulePermission(PROJECTS_MODULE_ID);
+  const { permission, role, loading: permissionLoading } = useModulePermission(PROJECTS_MODULE_ID);
+  // Vendor CPI is the internal payout rate - Clients (this app's other
+  // allowed role, besides Admin) should never see what the vendor gets paid.
+  const canSeeVendorCpi = role === "Admin";
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -755,12 +758,36 @@ export default function AddEditProjectPage() {
                   type="number"
                   step="0.01"
                   value={formData.cpc}
-                  onChange={(e) => setFormData({ ...formData, cpc: e.target.value })}
+                  onChange={(e) => {
+                    const cpc = e.target.value;
+                    const parsed = parseFloat(cpc);
+                    setFormData({
+                      ...formData,
+                      cpc,
+                      vendor_cpi: Number.isFinite(parsed) ? (parsed * 0.3).toFixed(2) : "",
+                    });
+                  }}
                   placeholder="CPI"
                   className="h-10"
                   required
                 />
               </div>
+
+              {canSeeVendorCpi && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-zinc-500">
+                    Vendor&apos;s Budget (CPI)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.vendor_cpi}
+                    onChange={(e) => setFormData({ ...formData, vendor_cpi: e.target.value })}
+                    placeholder="Auto-calculated as 30% of Client CPI"
+                    className="h-10"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">

@@ -23,6 +23,10 @@ interface ProjectEditModalProps {
   onClose: () => void;
   projectId: string | null;
   onSaved: () => void;
+  // Current user's role (from the parent's own useModulePermission call) -
+  // Vendor CPI is the internal payout rate and should stay hidden from
+  // Clients, so it's only rendered when this is "Admin".
+  role?: string | null;
 }
 
 interface OptionItem {
@@ -103,7 +107,8 @@ const emptyFormData = {
   sales_manager_id: "",
 };
 
-export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved }: ProjectEditModalProps) {
+export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved, role }: ProjectEditModalProps) {
+  const canSeeVendorCpi = role === "Admin";
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [options, setOptions] = useState<ProjectFormOptions>({
@@ -384,22 +389,33 @@ export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved }
                       type="number"
                       step="0.01"
                       value={formData.cpc}
-                      onChange={(e) => setFormData({ ...formData, cpc: e.target.value })}
+                      onChange={(e) => {
+                        const cpc = e.target.value;
+                        const parsed = parseFloat(cpc);
+                        setFormData({
+                          ...formData,
+                          cpc,
+                          vendor_cpi: Number.isFinite(parsed) ? (parsed * 0.3).toFixed(2) : "",
+                        });
+                      }}
                       className="h-9"
                       required
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-zinc-500">Vendor&apos;s Budget (CPI)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.vendor_cpi}
-                      onChange={(e) => setFormData({ ...formData, vendor_cpi: e.target.value })}
-                      className="h-9"
-                    />
-                  </div>
+                  {canSeeVendorCpi && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-zinc-500">Vendor&apos;s Budget (CPI)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.vendor_cpi}
+                        onChange={(e) => setFormData({ ...formData, vendor_cpi: e.target.value })}
+                        placeholder="Auto-calculated as 30% of Client CPI"
+                        className="h-9"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

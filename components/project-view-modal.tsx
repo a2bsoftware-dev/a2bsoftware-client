@@ -18,6 +18,10 @@ interface ProjectViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string | null;
+  // Current user's role (from the parent's own useModulePermission call) -
+  // Vendor CPI is the internal payout rate and should stay hidden from
+  // Clients, so it's only rendered when this is "Admin".
+  role?: string | null;
 }
 
 interface OptionItem {
@@ -171,7 +175,8 @@ function LinkField({ label, url }: { label: string; url?: string }) {
   );
 }
 
-export default function ProjectViewModal({ isOpen, onClose, projectId }: ProjectViewModalProps) {
+export default function ProjectViewModal({ isOpen, onClose, projectId, role }: ProjectViewModalProps) {
+  const canSeeVendorCpi = role === "Admin";
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ProjectFormData | null>(null);
 
@@ -281,7 +286,7 @@ export default function ProjectViewModal({ isOpen, onClose, projectId }: Project
                   <Field label="Language" value={lookup(data?.languages, p.languageId, "id", "languageName")} />
                   <Field label="Currency" value={lookup(data?.currency, p.currencyId, "id", "currencyName")} />
                   <Field label="Client's Budget (CPI)" value={p.cpc} />
-                  <Field label="Vendor's Budget (CPI)" value={p.vendorCpi} />
+                  {canSeeVendorCpi && <Field label="Vendor's Budget (CPI)" value={p.vendorCpi} />}
                   <Field label="Start Date" value={p.startDateFormatted} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

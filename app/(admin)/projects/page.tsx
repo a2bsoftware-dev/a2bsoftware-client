@@ -112,7 +112,7 @@ interface FilterOptions {
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const { permission } = useModulePermission(PROJECTS_MODULE_ID);
+  const { permission, role } = useModulePermission(PROJECTS_MODULE_ID);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
@@ -892,6 +892,7 @@ export default function ProjectsPage() {
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         projectId={activeProjectId}
+        role={role}
       />
 
       {/* 7. Edit Project Modal */}
@@ -900,6 +901,7 @@ export default function ProjectsPage() {
         onClose={() => setEditModalOpen(false)}
         projectId={activeProjectId}
         onSaved={() => loadProjects(page, limit)}
+        role={role}
       />
     </div>
   );
