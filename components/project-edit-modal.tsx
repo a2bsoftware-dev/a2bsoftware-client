@@ -109,6 +109,7 @@ const emptyFormData = {
 
 export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved, role }: ProjectEditModalProps) {
   const canSeeVendorCpi = role === "Admin";
+  const canSeeCurrency = role === "Admin";
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [options, setOptions] = useState<ProjectFormOptions>({
@@ -197,7 +198,7 @@ export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved, 
 
     if (
       !formData.project_name || !formData.study_type || !formData.country_id ||
-      !formData.language_id || !formData.currency_id || !formData.cpc ||
+      !formData.language_id || (canSeeCurrency && !formData.currency_id) || !formData.cpc ||
       !formData.survey_link || !formData.req_complete || !formData.ir || !formData.loi ||
       !formData.client_id || !formData.project_manager_id || !formData.sales_manager_id
     ) {
@@ -364,22 +365,24 @@ export default function ProjectEditModal({ isOpen, onClose, projectId, onSaved, 
                     </NativeSelect>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-zinc-500">
-                      Currency <span className="text-red-500">*</span>
-                    </Label>
-                    <NativeSelect
-                      value={formData.currency_id}
-                      onChange={(e) => setFormData({ ...formData, currency_id: e.target.value })}
-                      className="h-9 w-full"
-                      required
-                    >
-                      <option value="">Select</option>
-                      {options.currency.map((cur) => (
-                        <option key={cur.id} value={cur.id}>{cur.currencyName}</option>
-                      ))}
-                    </NativeSelect>
-                  </div>
+                  {canSeeCurrency && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-zinc-500">
+                        Currency <span className="text-red-500">*</span>
+                      </Label>
+                      <NativeSelect
+                        value={formData.currency_id}
+                        onChange={(e) => setFormData({ ...formData, currency_id: e.target.value })}
+                        className="h-9 w-full"
+                        required
+                      >
+                        <option value="">Select</option>
+                        {options.currency.map((cur) => (
+                          <option key={cur.id} value={cur.id}>{cur.currencyName}</option>
+                        ))}
+                      </NativeSelect>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-zinc-500">

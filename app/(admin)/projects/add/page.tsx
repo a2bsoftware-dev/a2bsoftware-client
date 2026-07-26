@@ -191,6 +191,9 @@ export default function AddEditProjectPage() {
   // Vendor CPI is the internal payout rate - Clients (this app's other
   // allowed role, besides Admin) should never see what the vendor gets paid.
   const canSeeVendorCpi = role === "Admin";
+  // Currency is an Admin-controlled setting here - Clients no longer pick it
+  // themselves (see the USD auto-default effect below).
+  const canSeeCurrency = role === "Admin";
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -332,6 +335,23 @@ export default function AddEditProjectPage() {
     loadProjectInitData();
   }, [project_id, loadProjectInitData]);
 
+  // Currency dropdown is hidden from Clients (see canSeeCurrency) - a brand
+  // new project still needs a currency, so silently default it to USD once
+  // the reference list has loaded. Never overrides an already-set value
+  // (editing an existing project, or Admin having picked one already).
+  // currencyName is inconsistently seeded across environments ("USD" vs.
+  // the full ISO name), hence matching on several variants.
+  useEffect(() => {
+    if (project_id || canSeeCurrency || formData.currency_id || options.currency.length === 0) return;
+    const usd = options.currency.find((c) => {
+      const name = c.currencyName.trim().toLowerCase();
+      return name === "usd" || name === "united states dollar" || name === "us dollar";
+    });
+    if (usd) {
+      setFormData((prev) => ({ ...prev, currency_id: usd.id }));
+    }
+  }, [project_id, canSeeCurrency, options.currency, formData.currency_id]);
+
   // Live hit counts: while editing an existing project, silently refresh just
   // the statistics strip every few seconds. Deliberately NOT reusing
   // loadProjectInitData here - that would also overwrite formData and stomp
@@ -413,9 +433,12 @@ export default function AddEditProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
-    if (!formData.project_name || !formData.study_type || !formData.country_id || 
-        !formData.language_id || !formData.currency_id || !formData.cpc || 
+    // Basic validation - currency_id only blocks submission when the
+    // dropdown is actually visible (canSeeCurrency); Clients get it
+    // auto-defaulted to USD instead (see the effect above) and never see the
+    // control themselves, so they can't be stuck on a field they can't fill in.
+    if (!formData.project_name || !formData.study_type || !formData.country_id ||
+        !formData.language_id || (canSeeCurrency && !formData.currency_id) || !formData.cpc ||
         !formData.survey_link || !formData.req_complete || !formData.ir || !formData.loi) {
       toast.error("Please fill in all required fields.");
       return;
@@ -725,30 +748,32 @@ export default function AddEditProjectPage() {
                 </Combobox>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-zinc-500">
-                  Currency <span className="text-red-500">*</span>
-                </Label>
-                <Combobox
-                  items={currencyComboItems}
-                  value={selectedCurrency}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, currency_id: (value as ComboItem | null)?.value ?? "" })
-                  }
-                >
-                  <ComboboxInput placeholder="Search currency..." className="h-10 w-full" showClear />
-                  <ComboboxContent>
-                    <ComboboxEmpty>No currency found.</ComboboxEmpty>
-                    <ComboboxList>
-                      {(item: ComboItem) => (
-                        <ComboboxItem key={item.value} value={item}>
-                          {item.label}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </div>
+              {canSeeCurrency && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-zinc-500">
+                    Currency <span className="text-red-500">*</span>
+                  </Label>
+                  <Combobox
+                    items={currencyComboItems}
+                    value={selectedCurrency}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, currency_id: (value as ComboItem | null)?.value ?? "" })
+                    }
+                  >
+                    <ComboboxInput placeholder="Search currency..." className="h-10 w-full" showClear />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No currency found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item: ComboItem) => (
+                          <ComboboxItem key={item.value} value={item}>
+                            {item.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-zinc-500">
