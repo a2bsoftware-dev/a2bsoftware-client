@@ -348,6 +348,11 @@ export default function AddEditProjectPage() {
       return name === "usd" || name === "united states dollar" || name === "us dollar";
     });
     if (usd) {
+      // Synchronizing local form state with the async reference-data load
+      // above (same "external system" case as loadProjectInitData's own
+      // setState calls), not the render-derived-value anti-pattern this rule
+      // targets.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData((prev) => ({ ...prev, currency_id: usd.id }));
     }
   }, [project_id, canSeeCurrency, options.currency, formData.currency_id]);
