@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import { ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Send, ShieldAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,17 +17,59 @@ import {
   subscribeApiError,
 } from "@/lib/api-error-store";
 
+// Identifies which app an error report email came from - the backend's
+// /api/public/error-reports endpoint is shared by all three frontend apps
+// (vendor/client/main admin), so there's no other way for it to tell them apart.
+const APP_NAME = "a2bsoftware-client";
+
+type ReportState = "idle" | "sending" | "sent" | "failed";
+
 // Mounted once in the root layout. apiFetch reports every non-ok API
 // response (and network failure) here, so this modal is the single global
 // surface for API errors across the whole app - no per-page wiring needed.
 export function ApiErrorModal() {
   const error = useSyncExternalStore(subscribeApiError, getApiErrorSnapshot, () => null);
   const [showDetail, setShowDetail] = useState(false);
+  const [reportState, setReportState] = useState<ReportState>("idle");
+
+  // Each new error gets a fresh id - reset the report button whenever a
+  // different error replaces whatever was previously showing.
+  useEffect(() => {
+    setReportState("idle");
+  }, [error?.id]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setShowDetail(false);
       clearApiError();
+    }
+  };
+
+  // Deliberately a plain fetch, not apiFetch - a failed report must never
+  // feed back into this same error store, or it would pop this modal open
+  // again on top of itself.
+  const handleReport = async () => {
+    if (!error) return;
+    setReportState("sending");
+    try {
+      const res = await fetch("/api/public/error-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app: APP_NAME,
+          code: String(error.code),
+          title: error.title,
+          method: error.method,
+          url: error.url,
+          detail: error.detail,
+          pageUrl: window.location.href,
+          userAgent: navigator.userAgent,
+          clientTimestamp: new Date().toISOString(),
+        }),
+      });
+      setReportState(res.ok ? "sent" : "failed");
+    } catch {
+      setReportState("failed");
     }
   };
 
@@ -37,9 +79,12 @@ export function ApiErrorModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <ShieldAlert className="h-5 w-5 shrink-0" />
-            <span>API Error {error?.code}</span>
+            <span>Something went wrong</span>
           </DialogTitle>
-          <DialogDescription>{error?.title}</DialogDescription>
+          <DialogDescription>
+            API Error {error?.code}
+            {error?.title ? `: ${error.title}` : ""}
+          </DialogDescription>
         </DialogHeader>
 
         {error?.detail && (
@@ -62,7 +107,23 @@ export function ApiErrorModal() {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="secondary"
+            onClick={handleReport}
+            disabled={reportState === "sending" || reportState === "sent"}
+          >
+            {reportState === "sending" && <Loader2 className="animate-spin" />}
+            {reportState === "sent" && <CheckCircle2 />}
+            {(reportState === "idle" || reportState === "failed") && <Send />}
+            {reportState === "sending"
+              ? "Sending..."
+              : reportState === "sent"
+                ? "Report sent"
+                : reportState === "failed"
+                  ? "Failed to send - retry"
+                  : "Report this error"}
+          </Button>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Close
           </Button>
