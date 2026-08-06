@@ -3,7 +3,7 @@
 # BuildKit features reproducible across CI runners and local machines.
 
 # --- Dependencies -----------------------------------------------------------
-FROM node:20-slim AS deps
+FROM node:25-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -12,7 +12,7 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 # --- Build --------------------------------------------------------------
-FROM node:20-slim AS builder
+FROM node:25-slim AS builder
 WORKDIR /app
 
 # Telemetry would otherwise phone home on every CI build; disabling it is a
@@ -41,7 +41,7 @@ ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # --- Runtime ------------------------------------------------------------
-FROM node:20-slim AS runner
+FROM node:25-slim AS runner
 WORKDIR /app
 
 # OCI labels let `docker inspect` / registry UIs / Trivy-style tools trace an
