@@ -11,7 +11,6 @@ import {
   Users,
   Building2,
   KeyRound,
-  Link2,
   FileCode,
   FileBarChart2,
   ShieldAlert,
@@ -97,7 +96,6 @@ export function AppSidebar({
       icon: Building2,
       visible: hasAccess(14),
       children: [
-        { name: "Links", href: "/clients/links", icon: Link2, visible: hasAccess(19) },
         {
           name: "Client Api Data",
           href: "/client-api-data",
