@@ -46,6 +46,8 @@ import {
 import { toast } from "sonner";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useModulePermission } from "@/hooks/use-module-permission";
+import { TableSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Matches the "Projects" entry in ACCESS_RIGHTS_MODULES - the report is a
 // project-scoped view of the same data the Projects screen manages, and
@@ -492,8 +494,10 @@ export default function ReportsPage() {
               All Projects
             </button>
             {loadingProjects ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+              <div className="p-2 space-y-1.5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
               </div>
             ) : filteredProjects.length === 0 ? (
               <div className="py-10 text-center text-xs text-zinc-400">No projects found.</div>
@@ -632,9 +636,7 @@ export default function ReportsPage() {
           </div>
           <CardContent className="pt-4">
             {loadingRows ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-              </div>
+              <TableSkeleton rows={6} columns={10} />
             ) : rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <span className="text-sm text-zinc-400">
@@ -748,8 +750,16 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Past uploads</span>
               {loadingUploads ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+                <div className="space-y-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Skeleton className="h-3 w-32" />
+                        <Skeleton className="h-4 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  ))}
                 </div>
               ) : reconcileUploads.length === 0 ? (
                 <div className="py-6 text-center text-xs text-zinc-400">No reconcile files uploaded yet.</div>

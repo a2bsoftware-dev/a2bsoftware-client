@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Handshake, Search, RefreshCw, Loader2,
+  Handshake, Search, RefreshCw,
   ChevronLeft, ChevronRight, Link2
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { TableSkeleton } from "@/components/skeletons";
 
 interface Project {
   id: number;
@@ -204,9 +205,8 @@ export default function SuppliersLandingPage() {
       <Card className="border-zinc-200 shadow-sm overflow-hidden bg-white dark:bg-zinc-900">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-              <span className="text-sm font-medium text-zinc-500">Querying projects index...</span>
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={6} />
             </div>
           ) : projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-2">

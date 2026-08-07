@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/combobox";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useModulePermission } from "@/hooks/use-module-permission";
+import { TableSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Matches the "Client Api Data" entry in ACCESS_RIGHTS_MODULES (access-rights page)
 // and MODULE_ID in the backend's ClientApiDataController.
@@ -137,6 +139,30 @@ function QualificationCard({ qual }: { qual: Qualification }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Stands in for a list of QualificationCard blocks while qualifications are
+// being fetched from Zamplia (used in both the campaign modal's Qualifications
+// tab and the standalone qualifications viewer popup).
+function QualificationsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-150 space-y-2">
+          <div className="flex justify-between items-start">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <Skeleton className="h-3 w-3/4" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-48" />
+            <Skeleton className="h-7 w-full" />
+            <Skeleton className="h-7 w-full" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -956,11 +982,8 @@ export default function ClientApiDataPage() {
       <Card className="border-zinc-200 shadow-sm overflow-hidden bg-white dark:bg-zinc-900">
         <CardContent className="p-0">
           {loading || fetchingApi ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-              <span className="text-sm font-medium text-zinc-500">
-                {fetchingApi ? "Synchronizing surveys feed from Zamplia..." : "Querying feed cache..."}
-              </span>
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={10} />
             </div>
           ) : dataset.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-2">
@@ -1449,10 +1472,7 @@ export default function ClientApiDataPage() {
                   </div>
 
                   {loadingQuals ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-2">
-                      <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
-                      <span className="text-xs text-zinc-500">Retrieving pre-screening qualification filters...</span>
-                    </div>
+                    <QualificationsSkeleton />
                   ) : qualifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 text-center space-y-1.5">
                       <HelpCircle className="h-8 w-8 text-zinc-300" />
@@ -1550,10 +1570,7 @@ export default function ClientApiDataPage() {
 
           <div className="py-2">
             {qualsViewLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-2">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
-                <span className="text-xs text-zinc-500">Retrieving pre-screening qualification filters...</span>
-              </div>
+              <QualificationsSkeleton />
             ) : qualsViewList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center space-y-1.5">
                 <HelpCircle className="h-8 w-8 text-zinc-300" />

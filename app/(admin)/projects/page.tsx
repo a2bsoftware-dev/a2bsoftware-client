@@ -39,6 +39,7 @@ import { API_BASE_URL, apiFetch } from "@/lib/api";
 import ProjectViewModal from "@/components/project-view-modal";
 import ProjectEditModal from "@/components/project-edit-modal";
 import { useModulePermission } from "@/hooks/use-module-permission";
+import { TableSkeleton } from "@/components/skeletons";
 
 // Matches the "Projects" entry in ACCESS_RIGHTS_MODULES (access-rights page)
 // and MODULE_ID in the backend's ProjectController.
@@ -533,9 +534,8 @@ export default function ProjectsPage() {
       <Card className="border-zinc-200 shadow-sm overflow-hidden bg-white dark:bg-zinc-900">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-              <span className="text-sm font-medium text-zinc-500">Querying projects index...</span>
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={12} />
             </div>
           ) : projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-2">

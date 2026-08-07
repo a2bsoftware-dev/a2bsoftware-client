@@ -237,3 +237,39 @@
 .dark [data-slot="dropdown-menu-sub-trigger"][data-popup-open] {
   background-image: linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
 }
+
+/* Skeleton loading "wave": a light band that sweeps across the block on a
+   loop, distinct from Tailwind's plain animate-pulse fade - used by
+   components/ui/skeleton.tsx (and every composed skeleton in
+   components/skeletons.tsx) for every page's loading state. */
+@keyframes skeleton-wave {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton-wave {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklch, var(--foreground) 8%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.8s ease-in-out infinite;
+}
+.dark .skeleton-wave {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklch, white 12%, transparent) 50%,
+    transparent 70%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-wave {
+    animation: none;
+  }
+}

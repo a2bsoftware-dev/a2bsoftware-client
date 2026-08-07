@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { TableSkeleton } from "@/components/skeletons";
 
 // Supplier allocation row, as returned by GET /api/projects/{id}/suppliers
 // (SupplierListItemDto on the backend) and used for the add/edit modal
@@ -475,9 +476,8 @@ export default function SuppliersPage() {
       <Card className="border-zinc-200 shadow-sm overflow-hidden bg-white dark:bg-zinc-900">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-              <span className="text-sm font-medium text-zinc-500">Querying supplier allocations...</span>
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={11} />
             </div>
           ) : dataset.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-2">
@@ -880,10 +880,7 @@ export default function SuppliersPage() {
 
           <div className="flex-1 overflow-y-auto min-h-[300px] py-4 border-t border-zinc-100 dark:border-zinc-800">
             {loadingDetails ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-500">Retrieving supplier logs...</span>
-              </div>
+              <TableSkeleton rows={5} columns={12} />
             ) : detailsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center space-y-1">
                 <span className="text-sm font-bold text-zinc-600">No Clicks Found</span>

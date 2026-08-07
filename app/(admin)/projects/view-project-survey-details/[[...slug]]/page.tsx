@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/ui/native-select";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { TableSkeleton } from "@/components/skeletons";
 
 // Row shape returned by /api/projects/survey-details, as consumed by the table below.
 interface SurveyDetailRow {
@@ -322,9 +323,8 @@ export default function ViewProjectSurveyDetailsPage() {
       <Card className="border-zinc-200 shadow-sm overflow-hidden bg-white dark:bg-zinc-900">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-              <span className="text-sm font-medium text-zinc-500">Querying project click logs...</span>
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={12} />
             </div>
           ) : dataset.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center space-y-2">

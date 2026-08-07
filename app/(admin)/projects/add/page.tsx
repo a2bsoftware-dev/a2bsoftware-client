@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/combobox";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useModulePermission } from "@/hooks/use-module-permission";
+import { FormSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Matches the "Projects" entry in ACCESS_RIGHTS_MODULES (access-rights page)
 // and MODULE_ID in the backend's ProjectController.
@@ -513,9 +515,48 @@ export default function AddEditProjectPage() {
 
   if (loading || permissionLoading || !allowed) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-zinc-600" />
-        <span className="text-sm font-medium text-zinc-500">Loading Configuration details...</span>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center pb-2 border-b border-zinc-200">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-3 w-80" />
+          </div>
+          <Skeleton className="h-9 w-36" />
+        </div>
+        <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+          <CardHeader className="py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent className="pt-6 pb-6">
+            <FormSkeleton fields={9} />
+          </CardContent>
+        </Card>
+        <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+          <CardHeader className="py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900">
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent className="pt-6 pb-6">
+            <FormSkeleton fields={3} />
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+            <CardHeader className="py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900">
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent className="pt-6 pb-6">
+              <FormSkeleton fields={3} />
+            </CardContent>
+          </Card>
+          <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+            <CardHeader className="py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900">
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent className="pt-6 pb-6">
+              <FormSkeleton fields={3} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

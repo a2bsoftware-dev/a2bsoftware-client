@@ -8,6 +8,7 @@ import DashboardHeader from "@/components/dashboard-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { ShellSkeleton } from "@/components/skeletons";
 import { apiFetch, getLastActivityAt, refreshTokensSilently } from "@/lib/api";
 import { useLogout } from "@/hooks/use-logout";
 
@@ -42,6 +43,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [showSetting, setShowSetting] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [logoutSecondsLeft, setLogoutSecondsLeft] = useState(ACCESS_DENIED_LOGOUT_SECONDS);
+  // True until the /api/auth/me check below settles - gates the shell behind
+  // ShellSkeleton so a just-logged-in user never sees AppSidebar/DashboardHeader
+  // render with user=null (empty nav, no role) for one flash of a frame.
+  const [checkingSession, setCheckingSession] = useState(true);
   const logout = useLogout();
 
   // Keep the session alive on a fixed timer regardless of activity - this is
@@ -105,7 +110,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       })
       .catch((err) => {
         console.error("Error fetching user session", err);
-      });
+      })
+      .finally(() => setCheckingSession(false));
 
     // 2. Fetch settings for conditional tabs visibility
     apiFetch("/api/settings")
@@ -121,6 +127,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       })
       .catch((err) => console.error("Error loading settings", err));
   }, []);
+
+  if (checkingSession) {
+    return <ShellSkeleton />;
+  }
 
   if (accessDenied) {
     return (

@@ -20,6 +20,8 @@ import StatusRadarChart from "@/components/charts/status-radar-chart";
 import CompletionRadialChart from "@/components/charts/completion-radial-chart";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { ChartSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface FilterOption {
   value: string;
@@ -562,9 +564,30 @@ export default function DashboardPage() {
 
   if (loading && surveyInformations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-zinc-600" />
-        <span className="text-sm font-medium text-zinc-500">Loading Dashboard Statistics...</span>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center pb-2 border-b border-zinc-200">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-3 w-72" />
+          </div>
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-32" />
+          ))}
+        </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </div>
+          <ChartSkeleton className="h-72" />
+        </div>
       </div>
     );
   }

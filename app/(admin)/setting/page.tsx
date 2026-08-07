@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { FormSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Shape of the settings form state, persisted via /api/settings.
 interface SettingsForm {
@@ -198,9 +200,48 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-3">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-        <span className="text-sm font-medium text-zinc-500">Querying settings registry...</span>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center pb-2 border-b border-zinc-200">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-3 w-80" />
+          </div>
+          <Skeleton className="h-9 w-36" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+              <CardHeader className="py-4 border-b border-zinc-100 bg-zinc-50/50">
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6">
+            <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+              <CardHeader className="py-4 border-b border-zinc-100 bg-zinc-50/50">
+                <Skeleton className="h-4 w-40" />
+              </CardHeader>
+              <CardContent className="p-6">
+                <FormSkeleton fields={1} />
+              </CardContent>
+            </Card>
+            <Card className="border-zinc-200 shadow-sm bg-white dark:bg-zinc-900">
+              <CardHeader className="py-4 border-b border-zinc-100 bg-zinc-50/50">
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="p-6 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
