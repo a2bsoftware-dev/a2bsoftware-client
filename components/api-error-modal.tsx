@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Send, ShieldAlert } from "lucide-react";
 import {
   Dialog,
@@ -33,10 +33,14 @@ export function ApiErrorModal() {
   const [reportState, setReportState] = useState<ReportState>("idle");
 
   // Each new error gets a fresh id - reset the report button whenever a
-  // different error replaces whatever was previously showing.
-  useEffect(() => {
+  // different error replaces whatever was previously showing. Adjusted
+  // during render (not an effect) per React's "adjusting state when a prop
+  // changes" pattern - avoids the extra commit-then-effect render pass.
+  const [prevErrorId, setPrevErrorId] = useState(error?.id);
+  if (error?.id !== prevErrorId) {
+    setPrevErrorId(error?.id);
     setReportState("idle");
-  }, [error?.id]);
+  }
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
