@@ -129,6 +129,11 @@ interface FormOptions {
   projectManagers: UserOption[];
   salesManagers: UserOption[];
   projectData?: ProjectData;
+  // Present only for a "Clients"-role requester - their own Client record's id
+  // (personal, or their category's company if one is assigned - see
+  // ProjectService.resolveOwnOrCategoryClientForDisplay), used to
+  // default-select and lock the Client dropdown on a new project.
+  currentUserClientId?: string;
 }
 
 // Response shape of GET /api/projects/form-data
@@ -137,10 +142,6 @@ interface ProjectFormDataResponse extends FormOptions {
   allDevicesIds?: string[];
   allChecklistIds?: string[];
   statistics: Statistics;
-  // Present only for a "Clients"-role requester - their own Client record's id,
-  // used to default-select (and, since `clients` is filtered to just this one
-  // entry for them, effectively lock) the Client dropdown on a new project.
-  currentUserClientId?: string;
 }
 
 // Termination callback URL, one per outcome (SurveyRouterController's
@@ -1007,6 +1008,12 @@ export default function AddEditProjectPage() {
                   onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
                   className="h-10"
                   required
+                  // A client account is always attributed to itself - the
+                  // backend enforces this server-side (ProjectService.
+                  // resolveClientIdForSave) regardless of what's submitted, so
+                  // this is locked to currentUserClientId rather than left as
+                  // a free (if effectively single-option) choice.
+                  disabled={Boolean(options.currentUserClientId)}
                 >
                   <option value="">Select Client</option>
                   {options.clients.map((cl: ClientOption) => (
