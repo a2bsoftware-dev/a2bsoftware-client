@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   FolderKanban, Plus, RefreshCw, Search,
   Trash2, Edit2, Copy, Check, Eye, Loader2,
-  ChevronLeft, ChevronRight, MoreVertical, Link2
+  ChevronLeft, ChevronRight, MoreVertical, Link2, CloudLightning
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { permission, role } = useModulePermission(PROJECTS_MODULE_ID);
   const [loading, setLoading] = useState(true);
+  const [syncingProject, setSyncingProject] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -346,6 +347,38 @@ export default function ProjectsPage() {
     }
   };
 
+  // Syncs this account's own allocated surveys - unlike the internal admin
+  // dashboard's sync dropdown (which lets an Admin explicitly pick Zamplia or
+  // All-research), a client account only ever belongs to one category, so the
+  // provider is resolved server-side from this user's own assignment (see
+  // UserClientCategory / SurveyProviderResolver.resolveForUser) - there's
+  // nothing to choose here. Same backend endpoint as the admin dashboard's
+  // sync (ClientApiDataController.syncFeed), just called with no categoryId.
+  const handleSyncProject = async () => {
+    setSyncingProject(true);
+    toast.info("Connecting to your survey feed. Fetching surveys data...");
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/api/client-api-data/sync`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          toast.success(data.message || "Surveys feed synchronized!");
+          setPage(1);
+          loadProjects(1, limit);
+        } else {
+          toast.error(data.message || "Sync failed");
+        }
+      } else {
+        toast.error("Sync failed - your account may not have a client category configured yet. Contact your admin.");
+      }
+    } catch (err) {
+      console.error("Error synchronizing survey feed", err);
+      toast.error("Sync connection timeout or server error");
+    } finally {
+      setSyncingProject(false);
+    }
+  };
+
   const getStatusColor = (statusId: number) => {
     switch (statusId) {
       case 1: return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/50"; // Bidding
@@ -383,13 +416,22 @@ export default function ProjectsPage() {
               <span>Add Project</span>
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1.5 border-zinc-200 shadow-sm"
-          >
-            <span>Sync Projects</span>
-          </Button>
+          {permission.create && (
+            <Button
+              onClick={handleSyncProject}
+              disabled={syncingProject}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5 border-zinc-200 shadow-sm"
+            >
+              {syncingProject ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <CloudLightning size={15} />
+              )}
+              <span>Sync Projects</span>
+            </Button>
+          )}
         </div>
       </div>
 
